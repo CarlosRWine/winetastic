@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { uvas, nombre, anada, bodega, tipo } = req.body;
+    const { uvas, nombre, anada, bodega, tipo, query } = req.body;
 
     let messages;
     let tools;
@@ -17,12 +17,30 @@ export default async function handler(req, res) {
 4. 🍷 ESTILOS habituales
 Sé conciso, usa emojis. Máximo 300 palabras.`
       }];
-    } else {
+
+    } else if (tipo === "busqueda") {
       tools = [{ type: "web_search_20250305", name: "web_search" }];
       messages = [{
         role: "user",
         content: `Busca información sobre el vino "${nombre}" añada ${anada}${bodega ? ` de la bodega "${bodega}"` : ""}. 
 En español proporciona: puntuaciones de críticos (Parker, Peñín, Decanter...), descripción organoléptica y maridajes recomendados. Sé conciso.`
+      }];
+
+    } else if (tipo === "recomienda") {
+      tools = [{ type: "web_search_20250305", name: "web_search" }];
+      messages = [{
+        role: "user",
+        content: `Eres un sommelier experto. El usuario busca: "${query}"
+
+Busca en internet y recomienda 2-3 vinos concretos en español que encajen perfectamente con esa descripción. Para cada vino incluye:
+🍷 Nombre y bodega
+📍 Denominación de origen
+💰 Precio aproximado
+⭐ Puntuación si está disponible
+📝 Por qué encaja con lo que busca el usuario
+🛒 Dónde comprarlo (menciona tiendas online españolas como Uvinum, Bodeboca o Vinoteca si es relevante)
+
+Sé concreto y práctico. Máximo 400 palabras.`
       }];
     }
 

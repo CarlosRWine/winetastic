@@ -421,9 +421,143 @@ const MisFichasView = ({ fichas, setFichas, onEdit }) => {
   );
 };
 
+
+// ─── VISTA RECOMIÉNDAME UN VINO ────────────────────────────────────────────
+const RecomiendaView = () => {
+  const [query, setQuery] = useState("");
+  const [resultado, setResultado] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [historial, setHistorial] = useState([]);
+
+  const ejemplos = [
+    "Vino blanco suave y afrutado de Rueda",
+    "Tinto con cuerpo para carne a la brasa, menos de 20€",
+    "Espumoso para celebración, estilo Champagne pero español",
+    "Vino natural de uva ecológica",
+    "Rosado de verano, fresco y ligero",
+  ];
+
+  const buscar = async (texto) => {
+    const q = texto || query;
+    if (!q.trim()) return;
+    setLoading(true);
+    setResultado("");
+    try {
+      const res = await fetch("/api/pista", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "recomienda", query: q })
+      });
+      const data = await res.json();
+      setResultado(data.text || data.error || "No se encontraron resultados.");
+      setHistorial(h => [q, ...h.filter(x => x !== q)].slice(0, 5));
+    } catch {
+      setResultado("Error al conectar. Comprueba tu conexión.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <h1 style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, color: C.burgundy, margin: "0 0 4px" }}>
+        🍾 Recomiéndame un Vino
+      </h1>
+      <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px", fontFamily: F.serif }}>
+        Describe qué tipo de vino buscas y la IA encontrará la mejor opción
+      </p>
+
+      {/* Buscador */}
+      <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.border}`,
+        padding: "20px", marginBottom: 20, boxShadow: "0 2px 12px rgba(114,40,56,0.06)" }}>
+        <textarea
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Ej: Quiero un vino blanco suave y afrutado de la zona de Rueda, para tomar con pescado, por menos de 15€..."
+          style={{ ...iBase, minHeight: 90, resize: "none", lineHeight: 1.7, marginBottom: 12 }}
+          onFocus={e => e.target.style.borderColor = C.gold}
+          onBlur={e => e.target.style.borderColor = C.border}
+        />
+        <button onClick={() => buscar()} disabled={loading || !query.trim()}
+          style={{ width: "100%", background: loading || !query.trim()
+            ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
+            color: loading || !query.trim() ? C.muted : "#2A1218",
+            border: "none", borderRadius: 9, padding: "13px",
+            fontSize: 16, cursor: loading || !query.trim() ? "not-allowed" : "pointer",
+            fontFamily: F.script, fontWeight: 700,
+            boxShadow: !loading && query.trim() ? `0 4px 14px ${C.gold}50` : "none" }}>
+          {loading ? "Buscando el vino perfecto..." : "🔍 Buscar"}
+        </button>
+      </div>
+
+      {/* Ejemplos */}
+      {!resultado && !loading && (
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 2,
+            fontFamily: F.serif, marginBottom: 12 }}>Ejemplos de búsqueda</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {ejemplos.map((e, i) => (
+              <button key={i} onClick={() => { setQuery(e); buscar(e); }}
+                style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+                  padding: "10px 14px", cursor: "pointer", textAlign: "left",
+                  fontFamily: F.serif, fontSize: 13, color: C.text,
+                  transition: "all 0.15s" }}
+                onMouseOver={ev => ev.currentTarget.style.borderColor = C.gold}
+                onMouseOut={ev => ev.currentTarget.style.borderColor = C.border}>
+                🍷 {e}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Spinner */}
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, color: C.muted,
+          fontStyle: "italic", fontSize: 14, fontFamily: F.serif, padding: "20px 0" }}>
+          <div style={{ width: 20, height: 20, border: `2px solid ${C.border}`,
+            borderTopColor: C.burgundy, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          Consultando al sommelier...
+        </div>
+      )}
+
+      {/* Resultado */}
+      {resultado && (
+        <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.border}`,
+          overflow: "hidden", boxShadow: "0 2px 12px rgba(114,40,56,0.06)" }}>
+          <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            padding: "13px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 15 }}>🍾</span>
+            <h2 style={{ margin: 0, color: "#FDF7F0", fontSize: 14, fontFamily: F.script, fontWeight: 700 }}>
+              Recomendación del Sommelier
+            </h2>
+          </div>
+          <div style={{ padding: "20px", fontSize: 14, lineHeight: 1.85,
+            fontFamily: F.serif, color: C.text, whiteSpace: "pre-wrap" }}>
+            {resultado}
+          </div>
+          <div style={{ padding: "0 20px 16px", display: "flex", gap: 10 }}>
+            <button onClick={() => { setResultado(""); setQuery(""); }}
+              style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                color: "#FDF7F0", border: "none", borderRadius: 8, padding: "11px",
+                fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
+              🔍 Nueva búsqueda
+            </button>
+            <button onClick={() => navigator.clipboard.writeText(resultado)}
+              style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+                borderRadius: 8, padding: "11px 16px", fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
+              📋 Copiar
+            </button>
+          </div>
+        </div>
+      )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+};
+
 // ─── APP ───────────────────────────────────────────────────────────────────
 export default function WinetasticApp() {
-  const [view, setView] = useState("nueva");
+  const [view, setView] = useState("home");
   const [fichas, setFichas] = useState(loadFichas);
   const [form, setForm] = useState(newForm());
   const [toast, setToast] = useState("");
@@ -458,39 +592,101 @@ export default function WinetasticApp() {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: F.serif }}>
 
-      {/* HERO HEADER */}
-      <header style={{ background: "#FFFFFF", padding: "32px 20px 22px", textAlign: "center",
-        borderBottom: `2px solid ${C.border}`, boxShadow: "0 2px 16px rgba(114,40,56,0.06)", position: "relative" }}>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <img src={LOGO} alt="Winetastic App" style={{ height: 150, display: "block", margin: "0 auto" }} />
-        </div>
-        <p style={{ margin: "8px 0 0", color: C.muted, fontFamily: F.serif, fontStyle: "italic", fontSize: 13, letterSpacing: 1 }}>
-          ✦ Tu cuaderno de catas digital ✦
-        </p>
-        <div style={{ position: "absolute", top: 18, right: 18, background: C.bg,
-          borderRadius: 20, padding: "5px 12px", border: `1px solid ${C.border}` }}>
-          <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, fontStyle: "italic" }}>
-            {fichas.length} {fichas.length === 1 ? "ficha" : "fichas"}
-          </span>
-        </div>
-      </header>
+      {/* HERO HEADER — solo en portada */}
+      {view === "home" && (
+        <div style={{ background: "#FFFFFF", minHeight: "100vh", display: "flex",
+          flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: "40px 24px", textAlign: "center" }}>
 
-      {/* NAV TABS */}
-      <nav style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
-        display: "flex", position: "sticky", top: 0, zIndex: 100,
-        boxShadow: "0 2px 8px rgba(114,40,56,0.06)" }}>
-        {[["nueva", "✏️ Nueva Ficha"], ["fichas", `📋 Mis Fichas (${fichas.length})`]].map(([v, l]) => (
-          <button key={v} onClick={() => setView(v)}
-            style={{ flex: 1, padding: "14px 10px", border: "none", cursor: "pointer",
-              fontFamily: F.script, fontWeight: 700, fontSize: 15,
-              background: view === v ? C.bg : C.card,
-              color: view === v ? C.burgundy : C.muted,
-              borderBottom: view === v ? `3px solid ${C.burgundy}` : "3px solid transparent",
-              transition: "all 0.18s" }}>
-            {l}
+          {/* Logo */}
+          <img src={LOGO} alt="Winetastic App"
+            style={{ height: 160, display: "block", margin: "0 auto 8px" }} />
+
+          <p style={{ color: C.muted, fontFamily: F.serif, fontStyle: "italic",
+            fontSize: 14, letterSpacing: 1, margin: "0 0 48px" }}>
+            ✦ Tu cuaderno de catas digital ✦
+          </p>
+
+          {/* Opciones principales */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 320 }}>
+
+            <button onClick={() => setView("nueva")}
+              style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                color: "#FDF7F0", border: "none", borderRadius: 14, padding: "20px 24px",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 16,
+                boxShadow: `0 6px 20px ${C.burgundy}35`, transition: "transform 0.15s" }}
+              onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+              onMouseOut={e => e.currentTarget.style.transform = "none"}>
+              <span style={{ fontSize: 28 }}>✏️</span>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 700 }}>Nueva Cata</div>
+                <div style={{ fontSize: 12, opacity: 0.8, fontFamily: F.serif, marginTop: 2 }}>Registra una nueva ficha de cata</div>
+              </div>
+            </button>
+
+            <button onClick={() => setView("fichas")}
+              style={{ background: C.card, color: C.text,
+                border: `2px solid ${C.border}`, borderRadius: 14, padding: "20px 24px",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 16,
+                boxShadow: "0 4px 12px rgba(114,40,56,0.08)", transition: "transform 0.15s" }}
+              onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+              onMouseOut={e => e.currentTarget.style.transform = "none"}>
+              <span style={{ fontSize: 28 }}>📋</span>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 700, color: C.burgundy }}>Mis Fichas de Cata</div>
+                <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, marginTop: 2 }}>
+                  {fichas.length} {fichas.length === 1 ? "ficha guardada" : "fichas guardadas"}
+                </div>
+              </div>
+            </button>
+
+            <button onClick={() => setView("recomienda")}
+              style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
+                color: "#2A1218", border: "none", borderRadius: 14, padding: "20px 24px",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 16,
+                boxShadow: `0 6px 20px ${C.gold}40`, transition: "transform 0.15s" }}
+              onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+              onMouseOut={e => e.currentTarget.style.transform = "none"}>
+              <span style={{ fontSize: 28 }}>🍾</span>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 700 }}>Recomiéndame un Vino</div>
+                <div style={{ fontSize: 12, opacity: 0.75, fontFamily: F.serif, marginTop: 2 }}>Encuentra el vino perfecto con IA</div>
+              </div>
+            </button>
+
+          </div>
+
+          <p style={{ color: C.border, fontFamily: F.serif, fontSize: 11,
+            marginTop: 48, letterSpacing: 1 }}>
+            winetastic-three.vercel.app
+          </p>
+        </div>
+      )}
+
+      {/* NAV TABS — oculto en portada */}
+      {view !== "home" && (
+        <nav style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
+          display: "flex", position: "sticky", top: 0, zIndex: 100,
+          boxShadow: "0 2px 8px rgba(114,40,56,0.06)" }}>
+          <button onClick={() => setView("home")}
+            style={{ padding: "14px 16px", border: "none", cursor: "pointer",
+              background: C.card, color: C.muted, fontSize: 18,
+              borderBottom: "3px solid transparent" }}>
+            ←
           </button>
-        ))}
-      </nav>
+          {[["nueva", "✏️ Nueva Cata"], ["fichas", `📋 Mis Fichas`], ["recomienda", "🍾 Recomiéndame"]].map(([v, l]) => (
+            <button key={v} onClick={() => setView(v)}
+              style={{ flex: 1, padding: "14px 6px", border: "none", cursor: "pointer",
+                fontFamily: F.serif, fontWeight: 700, fontSize: 12,
+                background: view === v ? C.bg : C.card,
+                color: view === v ? C.burgundy : C.muted,
+                borderBottom: view === v ? `3px solid ${C.burgundy}` : "3px solid transparent",
+                transition: "all 0.18s" }}>
+              {l}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {/* TOAST */}
       {toast && (
@@ -505,10 +701,13 @@ export default function WinetasticApp() {
       {/* MODAL PISTA */}
       {showPista && <PistaModal uvas={form.uvas} nombre={form.nombre} anada={form.anada} bodega={form.bodega} onClose={() => setShowPista(false)} />}
 
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px" }}>
+      {view !== "home" && <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px" }}>
 
         {/* ── VISTA MIS FICHAS ── */}
         {view === "fichas" && <MisFichasView fichas={fichas} setFichas={setFichas} onEdit={handleEdit} />}
+
+        {/* ── VISTA RECOMIÉNDAME ── */}
+        {view === "recomienda" && <RecomiendaView />}
 
         {/* ── VISTA NUEVA FICHA ── */}
         {view === "nueva" && (
@@ -696,7 +895,7 @@ export default function WinetasticApp() {
             </p>
           </>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

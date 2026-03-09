@@ -121,13 +121,12 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
   const fetchPerfil = async () => {
     setLoadingPerfil(true); setPerfilText("");
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/pista", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
-          messages: [{ role: "user", content: `Eres un sommelier experto. Para las variedades de uva: ${uvaList}, describe brevemente en español:\n1. 🎨 COLORES típicos (joven vs. crianza)\n2. 👃 AROMAS primarios, secundarios y terciarios\n3. 👅 SABORES y sensaciones en boca\n4. 🍷 ESTILOS habituales\nSé conciso, usa emojis. Máximo 300 palabras.` }] })
+        body: JSON.stringify({ tipo: "perfil", uvas: uvaList })
       });
       const data = await res.json();
-      setPerfilText(data.content?.[0]?.text || "No se pudo obtener información.");
+      setPerfilText(data.text || data.error || "No se pudo obtener información.");
     } catch { setPerfilText("Error al conectar. Comprueba tu conexión."); }
     setLoadingPerfil(false);
   };
@@ -135,15 +134,12 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
   const fetchSearch = async () => {
     setLoadingSearch(true); setSearchText("");
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/pista", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: `Busca información sobre el vino "${nombre}" añada ${anada}${bodega ? ` de "${bodega}"` : ""}. En español: puntuaciones de críticos, descripción organoléptica y maridajes. Sé conciso.` }] })
+        body: JSON.stringify({ tipo: "busqueda", nombre, anada, bodega })
       });
       const data = await res.json();
-      const text = data.content?.filter(b => b.type === "text").map(b => b.text).join("\n") || "Sin resultados.";
-      setSearchText(text);
+      setSearchText(data.text || data.error || "Sin resultados.");
     } catch { setSearchText("Error al buscar. Comprueba tu conexión."); }
     setLoadingSearch(false);
   };
@@ -466,7 +462,7 @@ export default function WinetasticApp() {
       <header style={{ background: "#FFFFFF", padding: "32px 20px 22px", textAlign: "center",
         borderBottom: `2px solid ${C.border}`, boxShadow: "0 2px 16px rgba(114,40,56,0.06)", position: "relative" }}>
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <img src={LOGO} alt="Winetastic App" style={{ height: 190, display: "block", margin: "0 auto" }} />
+          <img src={LOGO} alt="Winetastic App" style={{ height: 150, display: "block", margin: "0 auto" }} />
         </div>
         <p style={{ margin: "8px 0 0", color: C.muted, fontFamily: F.serif, fontStyle: "italic", fontSize: 13, letterSpacing: 1 }}>
           ✦ Tu cuaderno de catas digital ✦
@@ -704,4 +700,3 @@ export default function WinetasticApp() {
     </div>
   );
 }
-

@@ -422,6 +422,504 @@ const MisFichasView = ({ fichas, setFichas, onEdit }) => {
 };
 
 
+
+// ─── CREAR CATA GRUPAL ─────────────────────────────────────────────────────
+const CrearCataView = ({ onVolver }) => {
+  const [vino, setVino] = useState({ nombre: "", zona: "", do_cl: "", anada: "", bodega: "", precio: "", uvas: [{ v: "", p: "" }] });
+  const [codigo, setCodigo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copiado, setCopiado] = useState(false);
+
+  const updVino = (k, v) => setVino(f => ({ ...f, [k]: v }));
+  const addUva = () => { if (vino.uvas.length < 5) setVino(f => ({ ...f, uvas: [...f.uvas, { v: "", p: "" }] })); };
+  const updUva = (i, field, val) => { const a = [...vino.uvas]; a[i] = { ...a[i], [field]: val }; setVino(f => ({ ...f, uvas: a })); };
+
+  const crear = async () => {
+    if (!vino.nombre.trim()) { setError("Introduce al menos el nombre del vino."); return; }
+    setLoading(true); setError("");
+    try {
+      const res = await fetch("/api/cata", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "crear", vino })
+      });
+      const data = await res.json();
+      if (data.ok) setCodigo(data.codigo);
+      else setError(data.error || "Error al crear la cata.");
+    } catch { setError("Error de conexión."); }
+    setLoading(false);
+  };
+
+  const copiar = () => {
+    navigator.clipboard.writeText(codigo);
+    setCopiado(true); setTimeout(() => setCopiado(false), 2000);
+  };
+
+  if (codigo) return (
+    <div style={{ maxWidth: 420, margin: "0 auto", padding: "40px 24px", textAlign: "center" }}>
+      <img src={LOGO} style={{ height: 80, marginBottom: 24 }} />
+      <div style={{ background: C.card, borderRadius: 16, border: `2px solid ${C.gold}`,
+        padding: "32px 24px", boxShadow: `0 8px 32px ${C.gold}30` }}>
+        <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 8px" }}>
+          🥂 Cata grupal creada para
+        </p>
+        <h2 style={{ fontFamily: F.script, fontSize: 26, color: C.burgundy, margin: "0 0 24px", fontWeight: 700 }}>
+          {vino.nombre}
+        </h2>
+        <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 12px" }}>
+          Comparte este código con los participantes:
+        </p>
+        <div style={{ background: C.bg, border: `2px dashed ${C.gold}`, borderRadius: 12,
+          padding: "20px", marginBottom: 20 }}>
+          <div style={{ fontFamily: F.script, fontSize: 48, fontWeight: 700, color: C.burgundy,
+            letterSpacing: 8 }}>{codigo}</div>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={copiar} style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "12px",
+            fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
+            {copiado ? "✓ Copiado" : "📋 Copiar código"}
+          </button>
+          <button onClick={onVolver} style={{ background: "none", color: C.muted,
+            border: `1px solid ${C.border}`, borderRadius: 9, padding: "12px 16px",
+            fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
+            Inicio
+          </button>
+        </div>
+      </div>
+      <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 12, fontStyle: "italic", marginTop: 20 }}>
+        Los participantes usan "Unirse a Cata Grupal" e introducen el código.<br/>
+        Cuando finalice, accede con el mismo código para ver los resultados.
+      </p>
+    </div>
+  );
+
+  return (
+    <div>
+      <h1 style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, color: C.burgundy, margin: "0 0 4px" }}>
+        🥂 Crear Cata Grupal
+      </h1>
+      <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px", fontFamily: F.serif }}>
+        Introduce el vino que vais a catar en grupo
+      </p>
+      <Section title="Identificación del Vino" icon="🍾">
+        <Field label="Nombre del Vino *">
+          <TInput value={vino.nombre} onChange={v => updVino("nombre", v)} placeholder="Ej: Muga Reserva 2019" />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <Field label="Añada">
+            <TInput value={vino.anada} onChange={v => updVino("anada", v)} placeholder="2019" type="number" />
+          </Field>
+          <Field label="Precio Aprox. (€)">
+            <TInput value={vino.precio} onChange={v => updVino("precio", v)} placeholder="Ej: 25" type="number" />
+          </Field>
+          <Field label="Zona Geográfica">
+            <TInput value={vino.zona} onChange={v => updVino("zona", v)} placeholder="Ej: Rioja" />
+          </Field>
+          <Field label="D.O. / Clasificación">
+            <TInput value={vino.do_cl} onChange={v => updVino("do_cl", v)} placeholder="Ej: D.O.Ca. Rioja" />
+          </Field>
+        </div>
+        <Field label="Bodega">
+          <TInput value={vino.bodega} onChange={v => updVino("bodega", v)} placeholder="Ej: Bodegas Muga" />
+        </Field>
+        <Field label="Tipos de Uva">
+          {vino.uvas.map((u, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+              <div style={{ flex: 2 }}>
+                <input value={u.v} onChange={e => updUva(i, "v", e.target.value)}
+                  placeholder={`Variedad ${i + 1}`}
+                  onFocus={e => e.target.style.borderColor = C.gold}
+                  onBlur={e => e.target.style.borderColor = C.border}
+                  style={iBase} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <input value={u.p} onChange={e => updUva(i, "p", e.target.value)}
+                  placeholder="%" type="number"
+                  onFocus={e => e.target.style.borderColor = C.gold}
+                  onBlur={e => e.target.style.borderColor = C.border}
+                  style={iBase} />
+              </div>
+            </div>
+          ))}
+          {vino.uvas.length < 5 && <AddBtn onClick={addUva} label="Añadir variedad" />}
+        </Field>
+      </Section>
+      {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={crear} disabled={loading}
+          style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
+            fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700,
+            boxShadow: `0 4px 16px ${C.burgundy}40` }}>
+          {loading ? "Creando..." : "🥂 Crear Cata y Obtener Código"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── UNIRSE A CATA GRUPAL ──────────────────────────────────────────────────
+const UnirseCataView = ({ onVolver }) => {
+  const [paso, setPaso] = useState("codigo"); // codigo | formulario | enviado | resultados
+  const [codigoInput, setCodigoInput] = useState("");
+  const [cata, setCata] = useState(null);
+  const [nombreCatador, setNombreCatador] = useState("");
+  const [form, setForm] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [resumen, setResumen] = useState(null);
+
+  const buscarCodigo = async () => {
+    if (!codigoInput.trim()) return;
+    setLoading(true); setError("");
+    try {
+      const res = await fetch("/api/cata", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "unirse", codigo: codigoInput.trim().toUpperCase() })
+      });
+      const data = await res.json();
+      if (!data.ok) { setError(data.error || "Código no válido."); setLoading(false); return; }
+      setCata(data.cata);
+      if (data.finalizada) {
+        await cargarResultados(codigoInput.trim().toUpperCase());
+      } else {
+        const base = { ...newForm(), ...data.cata.vino };
+        setForm(base);
+        setPaso("formulario");
+      }
+    } catch { setError("Error de conexión."); }
+    setLoading(false);
+  };
+
+  const cargarResultados = async (cod) => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/cata", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "resultados", codigo: cod || codigoInput.trim().toUpperCase() })
+      });
+      const data = await res.json();
+      if (data.ok) { setCata(data.cata); setResumen(data.resumen); setPaso("resultados"); }
+      else setError(data.error);
+    } catch { setError("Error de conexión."); }
+    setLoading(false);
+  };
+
+  const enviarFicha = async () => {
+    if (!form) return;
+    setLoading(true); setError("");
+    try {
+      const res = await fetch("/api/cata", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "participar", codigo: codigoInput.trim().toUpperCase(), nombre_catador: nombreCatador || "Anónimo", ficha: form })
+      });
+      const data = await res.json();
+      if (data.ok) setPaso("enviado");
+      else setError(data.error || "Error al enviar.");
+    } catch { setError("Error de conexión."); }
+    setLoading(false);
+  };
+
+  const finalizarCata = async () => {
+    if (!window.confirm("¿Finalizar la cata? Todos podrán ver los resultados.")) return;
+    setLoading(true);
+    try {
+      await fetch("/api/cata", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "finalizar", codigo: codigoInput.trim().toUpperCase() })
+      });
+      await cargarResultados(codigoInput.trim().toUpperCase());
+    } catch { setError("Error de conexión."); }
+    setLoading(false);
+  };
+
+  const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const addRow = k => { if (form[k].length < 5) setF(k, [...form[k], { text: "", int: 0 }]); };
+  const updRow = (k, i, val) => { const a = [...form[k]]; a[i] = val; setF(k, a); };
+
+  // ── PASO: INTRODUCIR CÓDIGO ──
+  if (paso === "codigo") return (
+    <div style={{ maxWidth: 420, margin: "0 auto", padding: "40px 24px", textAlign: "center" }}>
+      <img src={LOGO} style={{ height: 80, marginBottom: 24 }} />
+      <h1 style={{ fontFamily: F.script, fontSize: 28, fontWeight: 700, color: C.burgundy, margin: "0 0 8px" }}>
+        🔑 Unirse a Cata Grupal
+      </h1>
+      <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 28px", fontFamily: F.serif }}>
+        Introduce el código que te ha compartido el anfitrión
+      </p>
+      <div style={{ background: C.card, borderRadius: 14, border: `1px solid ${C.border}`, padding: "28px 24px" }}>
+        <Field label="Tu nombre (opcional)">
+          <TInput value={nombreCatador} onChange={setNombreCatador} placeholder="Ej: María" />
+        </Field>
+        <Field label="Código de la Cata">
+          <input value={codigoInput} onChange={e => setCodigoInput(e.target.value.toUpperCase())}
+            placeholder="Ej: MUGA24"
+            onFocus={e => e.target.style.borderColor = C.gold}
+            onBlur={e => e.target.style.borderColor = C.border}
+            style={{ ...iBase, fontSize: 28, fontFamily: F.script, fontWeight: 700,
+              textAlign: "center", letterSpacing: 6, textTransform: "uppercase" }} />
+        </Field>
+        {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
+        <button onClick={buscarCodigo} disabled={loading || !codigoInput.trim()}
+          style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
+            fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700,
+            boxShadow: `0 4px 16px ${C.burgundy}40` }}>
+          {loading ? "Buscando..." : "🔑 Entrar a la Cata"}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── PASO: FORMULARIO DE CATA ──
+  if (paso === "formulario" && form) return (
+    <div>
+      <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+        borderRadius: 12, padding: "16px 20px", marginBottom: 20,
+        display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ color: C.gold, fontSize: 11, fontFamily: F.serif, letterSpacing: 2, textTransform: "uppercase" }}>Cata Grupal · {codigoInput.toUpperCase()}</div>
+          <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 22, fontWeight: 700, marginTop: 2 }}>{cata?.vino?.nombre}</div>
+          {cata?.vino?.anada && <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: F.serif }}>{cata.vino.bodega} · {cata.vino.anada}</div>}
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 20, fontWeight: 700 }}>{codigoInput.toUpperCase()}</div>
+          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: F.serif }}>código</div>
+        </div>
+      </div>
+
+      <Section title="Análisis Visual" icon="👁">
+        <Field label="Descripción del Color">
+          <TInput value={form.color} onChange={v => setF("color", v)} placeholder="Ej: Rojo cereza con ribete granate" />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {[["int_color","Intensidad Color"],["lagrima","Lágrima"],["opacidad","Opacidad"],["limpieza","Limpieza"],["punt_vis","Punt. Visual"]].map(([k, l]) => (
+            <Field key={k} label={l}><ScalePicker value={form[k]} onChange={v => setF(k, v)} /></Field>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Análisis Olfativo" icon="👃">
+        <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 12px", fontFamily: F.serif }}>— Copa en reposo —</p>
+        {form.arp.map((a, i) => <AromaRow key={i} item={a} onChange={v => updRow("arp", i, v)} label="Aroma detectado" index={i} />)}
+        {form.arp.length < 5 && <AddBtn onClick={() => addRow("arp")} label="Añadir aroma" />}
+        <div style={{ height: 1, background: C.border, margin: "16px 0" }} />
+        <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 12px", fontFamily: F.serif }}>— Tras agitar —</p>
+        {form.ara.map((a, i) => <AromaRow key={i} item={a} onChange={v => updRow("ara", i, v)} label="Aroma detectado" index={i} />)}
+        {form.ara.length < 5 && <AddBtn onClick={() => addRow("ara")} label="Añadir aroma" />}
+        <div style={{ height: 1, background: C.border, margin: "16px 0" }} />
+        <Field label="Puntuación Olfativa"><ScalePicker value={form.punt_olf} onChange={v => setF("punt_olf", v)} /></Field>
+      </Section>
+
+      <Section title="Análisis Gustativo" icon="👅">
+        {form.sab.map((s, i) => <AromaRow key={i} item={s} onChange={v => updRow("sab", i, v)} label="Sabor detectado" index={i} />)}
+        {form.sab.length < 5 && <AddBtn onClick={() => addRow("sab")} label="Añadir sabor" />}
+        <div style={{ height: 1, background: C.border, margin: "16px 0" }} />
+        <Field label={`Seco → Dulce · ${["Seco","Semi-seco","Abocado","Semi-dulce","Dulce","Muy dulce"][form.seco_dulce]}`}>
+          <input type="range" min={0} max={5} value={form.seco_dulce}
+            onChange={e => setF("seco_dulce", +e.target.value)}
+            style={{ width: "100%", accentColor: C.burgundy, cursor: "pointer" }} />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Astringencia"><ScalePicker value={form.astringencia} onChange={v => setF("astringencia", v)} /></Field>
+          <Field label="Retrogusto"><ScalePicker value={form.retro_p} onChange={v => setF("retro_p", v)} /></Field>
+        </div>
+        <Field label="Punt. Gustativa"><ScalePicker value={form.punt_gus} onChange={v => setF("punt_gus", v)} /></Field>
+      </Section>
+
+      <Section title="Puntuación Final" icon="🏅">
+        <Field label="Puntuación (0 – 100)">
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <input type="range" min={0} max={100} value={form.puntuacion || 0}
+              onChange={e => setF("puntuacion", +e.target.value)}
+              style={{ flex: 1, accentColor: C.burgundy, cursor: "pointer" }} />
+            <div style={{ width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
+              background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              color: "#FDF7F0", fontFamily: F.script, fontWeight: 700,
+              boxShadow: `0 3px 12px ${C.burgundy}40` }}>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>{form.puntuacion || 0}</span>
+              <span style={{ fontSize: 8, opacity: 0.8, fontFamily: F.serif }}>/100</span>
+            </div>
+          </div>
+        </Field>
+        <Field label="Notas">
+          <textarea value={form.notas} onChange={e => setF("notas", e.target.value)}
+            placeholder="Observaciones personales..."
+            style={{ ...iBase, minHeight: 70, resize: "none", lineHeight: 1.7 }} />
+        </Field>
+      </Section>
+
+      {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      <div style={{ display: "flex", gap: 10, marginBottom: 40 }}>
+        <button onClick={enviarFicha} disabled={loading}
+          style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
+            fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
+          {loading ? "Enviando..." : "🍷 Enviar mi Cata"}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── PASO: ENVIADO ──
+  if (paso === "enviado") return (
+    <div style={{ maxWidth: 420, margin: "0 auto", padding: "40px 24px", textAlign: "center" }}>
+      <div style={{ fontSize: 64, marginBottom: 16 }}>🍷</div>
+      <h2 style={{ fontFamily: F.script, fontSize: 28, color: C.burgundy, fontWeight: 700, margin: "0 0 8px" }}>
+        ¡Ficha enviada!
+      </h2>
+      <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 14, fontStyle: "italic", margin: "0 0 32px" }}>
+        Tu cata ha sido registrada correctamente
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <button onClick={() => cargarResultados()}
+          style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
+            fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
+          📊 Ver resultados globales
+        </button>
+        <button onClick={finalizarCata}
+          style={{ background: "none", color: C.burgundy, border: `2px solid ${C.burgundy}`,
+            borderRadius: 9, padding: "14px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>
+          🏁 Soy el anfitrión · Finalizar cata
+        </button>
+        <button onClick={onVolver}
+          style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+            borderRadius: 9, padding: "14px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>
+          Volver al inicio
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── PASO: RESULTADOS ──
+  if (paso === "resultados" && resumen) {
+    const Bar = ({ count, max, color }) => (
+      <div style={{ flex: 1, height: 8, background: C.bg, borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${(count / max) * 100}%`,
+          background: color || `linear-gradient(90deg, ${C.burgundy}, #9B3050)`,
+          borderRadius: 4, transition: "width 0.5s ease" }} />
+      </div>
+    );
+    const maxCount = (arr) => arr.length ? Math.max(...arr.map(x => x.count)) : 1;
+
+    return (
+      <div>
+        <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+          borderRadius: 12, padding: "20px", marginBottom: 20, textAlign: "center" }}>
+          <div style={{ color: C.gold, fontSize: 11, fontFamily: F.serif, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>
+            Resultados · {codigoInput.toUpperCase()}
+          </div>
+          <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 26, fontWeight: 700 }}>
+            {cata?.vino?.nombre}
+          </div>
+          {cata?.vino?.bodega && <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: F.serif, marginTop: 4 }}>{cata.vino.bodega} · {cata.vino.anada}</div>}
+          <div style={{ color: C.gold, fontFamily: F.serif, fontSize: 13, marginTop: 8 }}>
+            {resumen.total} {resumen.total === 1 ? "participante" : "participantes"}
+          </div>
+        </div>
+
+        {/* Puntuación media */}
+        <Section title="Puntuación Media" icon="🏅">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginBottom: 16 }}>
+            <div style={{ width: 90, height: 90, borderRadius: "50%",
+              background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              color: "#FDF7F0", boxShadow: `0 6px 24px ${C.burgundy}40` }}>
+              <span style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, lineHeight: 1 }}>{resumen.punt_media}</span>
+              <span style={{ fontSize: 11, opacity: 0.8, fontFamily: F.serif }}>/100</span>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            {[["👁 Visual", resumen.punt_vis, 5], ["👃 Olfativa", resumen.punt_olf, 5], ["👅 Gustativa", resumen.punt_gus, 5]].map(([l, v, max]) => (
+              <div key={l} style={{ background: C.bg, borderRadius: 8, padding: "10px", textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, marginBottom: 4 }}>{l}</div>
+                <div style={{ fontFamily: F.script, fontSize: 20, color: C.burgundy, fontWeight: 700 }}>{v}</div>
+                <div style={{ fontSize: 10, color: C.muted, fontFamily: F.serif }}>/ {max}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* Participantes */}
+        <Section title="Participantes" icon="🥂">
+          {resumen.participantes.map((p, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 0", borderBottom: i < resumen.participantes.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <span style={{ fontFamily: F.serif, fontSize: 14, color: C.text }}>{p.nombre}</span>
+              <span style={{ fontFamily: F.script, fontSize: 18, color: C.burgundy, fontWeight: 700 }}>{p.puntuacion}/100</span>
+            </div>
+          ))}
+        </Section>
+
+        {/* Colores */}
+        {resumen.colores?.length > 0 && (
+          <Section title="Colores Percibidos" icon="🎨">
+            {resumen.colores.map((c, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontFamily: F.serif, color: C.text, minWidth: 120, textTransform: "capitalize" }}>{c.texto}</span>
+                <Bar count={c.count} max={maxCount(resumen.colores)} />
+                <span style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, minWidth: 30, textAlign: "right" }}>{c.count}👤</span>
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {/* Aromas */}
+        {resumen.aromas_parada?.length > 0 && (
+          <Section title="Aromas Detectados" icon="👃">
+            <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 12px", fontFamily: F.serif }}>— Copa en reposo —</p>
+            {resumen.aromas_parada.map((a, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontFamily: F.serif, color: C.text, minWidth: 120, textTransform: "capitalize" }}>{a.texto}</span>
+                <Bar count={a.count} max={maxCount(resumen.aromas_parada)} />
+                <span style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, minWidth: 30, textAlign: "right" }}>{a.count}👤</span>
+              </div>
+            ))}
+            {resumen.aromas_agitada?.length > 0 && (
+              <>
+                <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "16px 0 12px", fontFamily: F.serif }}>— Tras agitar —</p>
+                {resumen.aromas_agitada.map((a, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontFamily: F.serif, color: C.text, minWidth: 120, textTransform: "capitalize" }}>{a.texto}</span>
+                    <Bar count={a.count} max={maxCount(resumen.aromas_agitada)} />
+                    <span style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, minWidth: 30, textAlign: "right" }}>{a.count}👤</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </Section>
+        )}
+
+        {/* Sabores */}
+        {resumen.sabores?.length > 0 && (
+          <Section title="Sabores Detectados" icon="👅">
+            {resumen.sabores.map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontFamily: F.serif, color: C.text, minWidth: 120, textTransform: "capitalize" }}>{s.texto}</span>
+                <Bar count={s.count} max={maxCount(resumen.sabores)} />
+                <span style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, minWidth: 30, textAlign: "right" }}>{s.count}👤</span>
+              </div>
+            ))}
+          </Section>
+        )}
+
+        <button onClick={onVolver}
+          style={{ width: "100%", background: "none", color: C.muted,
+            border: `1px solid ${C.border}`, borderRadius: 9, padding: "14px",
+            fontSize: 14, cursor: "pointer", fontFamily: F.serif, marginBottom: 40 }}>
+          Volver al inicio
+        </button>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 // ─── VISTA RECOMIÉNDAME UN VINO ────────────────────────────────────────────
 const RecomiendaView = () => {
   const [query, setQuery] = useState("");
@@ -654,6 +1152,36 @@ export default function WinetasticApp() {
               </div>
             </button>
 
+            <div style={{ height: 1, background: C.border, width: "100%", margin: "4px 0" }} />
+
+            <button onClick={() => setView("crear_cata")}
+              style={{ background: C.card, color: C.text,
+                border: `2px solid ${C.burgundy}`, borderRadius: 14, padding: "20px 24px",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 16,
+                boxShadow: "0 4px 12px rgba(114,40,56,0.1)", transition: "transform 0.15s" }}
+              onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+              onMouseOut={e => e.currentTarget.style.transform = "none"}>
+              <span style={{ fontSize: 28 }}>🥂</span>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 700, color: C.burgundy }}>Crear Cata Grupal</div>
+                <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, marginTop: 2 }}>Cata en grupo con código compartido</div>
+              </div>
+            </button>
+
+            <button onClick={() => setView("unirse_cata")}
+              style={{ background: C.card, color: C.text,
+                border: `2px solid ${C.border}`, borderRadius: 14, padding: "20px 24px",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 16,
+                boxShadow: "0 4px 12px rgba(114,40,56,0.06)", transition: "transform 0.15s" }}
+              onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+              onMouseOut={e => e.currentTarget.style.transform = "none"}>
+              <span style={{ fontSize: 28 }}>🔑</span>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 700, color: C.burgundy }}>Unirse a Cata Grupal</div>
+                <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, marginTop: 2 }}>Introduce el código de la cata</div>
+              </div>
+            </button>
+
           </div>
 
           <p style={{ color: C.border, fontFamily: F.serif, fontSize: 11,
@@ -664,7 +1192,7 @@ export default function WinetasticApp() {
       )}
 
       {/* NAV TABS — oculto en portada */}
-      {view !== "home" && (
+      {!["home","crear_cata","unirse_cata"].includes(view) && (
         <nav style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
           display: "flex", position: "sticky", top: 0, zIndex: 100,
           boxShadow: "0 2px 8px rgba(114,40,56,0.06)" }}>
@@ -674,7 +1202,7 @@ export default function WinetasticApp() {
               borderBottom: "3px solid transparent" }}>
             ←
           </button>
-          {[["nueva", "✏️ Nueva Cata"], ["fichas", `📋 Mis Fichas`], ["recomienda", "🍾 Recomiéndame"]].map(([v, l]) => (
+          {[["nueva", "✏️ Nueva Cata"], ["fichas", "📋 Mis Fichas"], ["recomienda", "🍾 Recomiéndame"], ["crear_cata", "🥂 Grupal"], ["unirse_cata", "🔑 Unirse"]].map(([v, l]) => (
             <button key={v} onClick={() => setView(v)}
               style={{ flex: 1, padding: "14px 6px", border: "none", cursor: "pointer",
                 fontFamily: F.serif, fontWeight: 700, fontSize: 12,
@@ -708,6 +1236,12 @@ export default function WinetasticApp() {
 
         {/* ── VISTA RECOMIÉNDAME ── */}
         {view === "recomienda" && <RecomiendaView />}
+
+        {/* ── VISTA CREAR CATA GRUPAL ── */}
+        {view === "crear_cata" && <CrearCataView onVolver={() => setView("home")} />}
+
+        {/* ── VISTA UNIRSE A CATA GRUPAL ── */}
+        {view === "unirse_cata" && <UnirseCataView onVolver={() => setView("home")} />}
 
         {/* ── VISTA NUEVA FICHA ── */}
         {view === "nueva" && (

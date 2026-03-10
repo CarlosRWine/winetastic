@@ -609,7 +609,7 @@ const CrearCataView = ({ onVolver }) => {
 
 // ─── UNIRSE A CATA GRUPAL ──────────────────────────────────────────────────
 const UnirseCataView = ({ onVolver, codigoPreset = "", nombrePreset = "", modoResultados = false }) => {
-  const [paso, setPaso] = useState(modoResultados ? "resultados" : codigoPreset ? "buscando" : "codigo");
+  const [paso, setPaso] = useState(modoResultados ? "cargando" : codigoPreset ? "buscando" : "codigo");
   const [codigoInput, setCodigoInput] = useState(codigoPreset);
   const [cata, setCata] = useState(null);
   const [nombreCatador, setNombreCatador] = useState(nombrePreset);
@@ -649,15 +649,26 @@ const UnirseCataView = ({ onVolver, codigoPreset = "", nombrePreset = "", modoRe
 
   const cargarResultados = async (cod) => {
     setLoading(true);
+    const codigoFinal = cod || codigoInput.trim().toUpperCase();
     try {
       const res = await fetch("/api/cata", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion: "resultados", codigo: cod || codigoInput.trim().toUpperCase() })
+        body: JSON.stringify({ accion: "resultados", codigo: codigoFinal })
       });
       const data = await res.json();
-      if (data.ok) { setCata(data.cata); setResumen(data.resumen); setPaso("resultados"); }
-      else setError(data.error);
-    } catch { setError("Error de conexión."); }
+      if (data.ok) {
+        setCata(data.cata);
+        setResumen(data.resumen);
+        setCodigoInput(codigoFinal);
+        setPaso("resultados");
+      } else {
+        setError(data.error || "Error al cargar resultados.");
+        setPaso("codigo");
+      }
+    } catch {
+      setError("Error de conexión.");
+      setPaso("codigo");
+    }
     setLoading(false);
   };
 
@@ -979,6 +990,38 @@ const UnirseCataView = ({ onVolver, codigoPreset = "", nombrePreset = "", modoRe
       </div>
     );
   }
+
+  // ── PASO: CARGANDO ──
+  if (paso === "cargando" || paso === "buscando") return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", padding: "80px 24px", gap: 16 }}>
+      <div style={{ width: 36, height: 36, border: `3px solid ${C.border}`,
+        borderTopColor: C.burgundy, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <p style={{ color: C.muted, fontFamily: F.serif, fontStyle: "italic", fontSize: 14 }}>
+        Cargando resultados...
+      </p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+
+  // ── PASO: RESULTADOS SIN DATOS ──
+  if (paso === "resultados" && !resumen) return (
+    <div style={{ textAlign: "center", padding: "60px 24px" }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>🥂</div>
+      <h2 style={{ fontFamily: F.script, fontSize: 24, color: C.burgundy, fontWeight: 700, margin: "0 0 8px" }}>
+        {cata?.vino?.nombre}
+      </h2>
+      <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 14, fontStyle: "italic" }}>
+        Aún no hay fichas enviadas en esta cata.
+      </p>
+      <button onClick={onVolver}
+        style={{ marginTop: 24, background: "none", color: C.muted,
+          border: `1px solid ${C.border}`, borderRadius: 9, padding: "12px 24px",
+          fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>
+        Volver al inicio
+      </button>
+    </div>
+  );
 
   return null;
 };

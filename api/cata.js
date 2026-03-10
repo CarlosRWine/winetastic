@@ -1,14 +1,6 @@
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-async function redis(command, ...args) {
-  const res = await fetch(`${UPSTASH_URL}/${command}/${args.map(a => encodeURIComponent(typeof a === "object" ? JSON.stringify(a) : a)).join("/")}`, {
-    headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
-  });
-  const data = await res.json();
-  return data.result;
-}
-
 async function redisSet(key, value) {
   const res = await fetch(`${UPSTASH_URL}/set/${encodeURIComponent(key)}`, {
     method: "POST",
@@ -39,7 +31,8 @@ export default async function handler(req, res) {
   const { accion } = req.body;
 
   try {
-    // ── CREAR CATA GRUPAL ──────────────────────────────────────────────────
+
+    // ── CREAR ──────────────────────────────────────────────────────────────
     if (accion === "crear") {
       const { vino } = req.body;
       const codigo = generarCodigo();
@@ -54,21 +47,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, codigo });
     }
 
-    // ── UNIRSE A CATA ──────────────────────────────────────────────────────
+    // ── UNIRSE ─────────────────────────────────────────────────────────────
     if (accion === "unirse") {
       const { codigo } = req.body;
       const cata = await redisGet(`cata:${codigo.toUpperCase()}`);
       if (!cata) return res.status(404).json({ error: "Código no encontrado. Comprueba que es correcto." });
-      if (cata.estado === "finalizada") return res.status(200).json({ ok: true, cata, finalizada: true });
-      return res.status(200).json({ ok: true, cata, finalizada: false });
+      return res.status(200).json({ ok: true, cata, finalizada: cata.estado === "finalizada" });
     }
 
-    // ── GUARDAR PARTICIPACIÓN ──────────────────────────────────────────────
+    // ── PARTICIPAR ─────────────────────────────────────────────────────────
     if (accion === "participar") {
       const { codigo, nombre_catador, ficha } = req.body;
       const cata = await redisGet(`cata:${codigo}`);
       if (!cata) return res.status(404).json({ error: "Cata no encontrada." });
       if (cata.estado === "finalizada") return res.status(400).json({ error: "Esta cata ya ha sido finalizada." });
+      
+      // Safety check - ensure participantes is always an array
+      if (!Array.isArray(cata.participantes)) cata.participantes = [];
+      
       cata.participantes.push({
         nombre_catador: nombre_catador || "Anónimo",
         ficha,
@@ -78,7 +74,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, participantes: cata.participantes.length });
     }
 
-    // ── FINALIZAR CATA ─────────────────────────────────────────────────────
+    // ── FINALIZAR ──────────────────────────────────────────────────────────
     if (accion === "finalizar") {
       const { codigo } = req.body;
       const cata = await redisGet(`cata:${codigo}`);
@@ -88,22 +84,20 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // ── OBTENER RESULTADOS ─────────────────────────────────────────────────
+    // ── RESULTADOS ─────────────────────────────────────────────────────────
     if (accion === "resultados") {
       const { codigo } = req.body;
       const cata = await redisGet(`cata:${codigo.toUpperCase()}`);
       if (!cata) return res.status(404).json({ error: "Cata no encontrada." });
 
-      const parts = cata.participantes;
+      const parts = Array.isArray(cata.participantes) ? cata.participantes : [];
       if (parts.length === 0) return res.status(200).json({ ok: true, cata, resumen: null });
 
-      // Calcular medias numéricas
       const avg = (key) => {
         const vals = parts.map(p => p.ficha[key]).filter(v => v > 0);
         return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : 0;
       };
 
-      // Contar aromas y sabores
       const contarTextos = (key) => {
         const mapa = {};
         parts.forEach(p => {
@@ -117,7 +111,6 @@ export default async function handler(req, res) {
         return Object.entries(mapa).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([texto, count]) => ({ texto, count }));
       };
 
-      // Contar colores
       const colores = {};
       parts.forEach(p => {
         if (p.ficha.color?.trim()) {

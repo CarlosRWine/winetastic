@@ -423,6 +423,27 @@ const MisFichasView = ({ fichas, setFichas, onEdit }) => {
 
 
 
+
+// ─── HELPER: Anfitrión participa inline ────────────────────────────────────
+const UnirseCataInline = ({ codigo, nombreInicial, onVolver }) => {
+  const [abierto, setAbierto] = useState(false);
+  if (!abierto) return (
+    <button onClick={() => setAbierto(true)}
+      style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
+        color: "#2A1218", border: "none", borderRadius: 9, padding: "13px",
+        fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700,
+        boxShadow: `0 4px 14px ${C.gold}40` }}>
+      🍷 Participar yo también en esta cata
+    </button>
+  );
+  return <UnirseCataView onVolver={onVolver} codigoPreset={codigo} nombrePreset={nombreInicial} />;
+};
+
+// ─── HELPER: Ver resultados desde creador ──────────────────────────────────
+const UnirseCataResultados = ({ codigo, onVolver }) => {
+  return <UnirseCataView onVolver={onVolver} codigoPreset={codigo} modoResultados={true} />;
+};
+
 // ─── CREAR CATA GRUPAL ─────────────────────────────────────────────────────
 const CrearCataView = ({ onVolver }) => {
   const [vino, setVino] = useState({ nombre: "", zona: "", do_cl: "", anada: "", bodega: "", precio: "", uvas: [{ v: "", p: "" }] });
@@ -455,18 +476,34 @@ const CrearCataView = ({ onVolver }) => {
     setCopiado(true); setTimeout(() => setCopiado(false), 2000);
   };
 
+  const [finalizando, setFinalizando] = useState(false);
+  const [resultadosUrl, setResultadosUrl] = useState(false);
+
+  const finalizarDesdeCreador = async () => {
+    if (!window.confirm("¿Finalizar la cata? Los participantes podrán ver los resultados.")) return;
+    setFinalizando(true);
+    try {
+      await fetch("/api/cata", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "finalizar", codigo })
+      });
+      setResultadosUrl(true);
+    } catch { alert("Error al finalizar."); }
+    setFinalizando(false);
+  };
+
   if (codigo) return (
     <div style={{ maxWidth: 420, margin: "0 auto", padding: "40px 24px", textAlign: "center" }}>
       <img src={LOGO} style={{ height: 80, marginBottom: 24 }} />
       <div style={{ background: C.card, borderRadius: 16, border: `2px solid ${C.gold}`,
-        padding: "32px 24px", boxShadow: `0 8px 32px ${C.gold}30` }}>
+        padding: "32px 24px", boxShadow: `0 8px 32px ${C.gold}30`, marginBottom: 16 }}>
         <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 8px" }}>
           🥂 Cata grupal creada para
         </p>
-        <h2 style={{ fontFamily: F.script, fontSize: 26, color: C.burgundy, margin: "0 0 24px", fontWeight: 700 }}>
+        <h2 style={{ fontFamily: F.script, fontSize: 26, color: C.burgundy, margin: "0 0 20px", fontWeight: 700 }}>
           {vino.nombre}
         </h2>
-        <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 12px" }}>
+        <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 10px" }}>
           Comparte este código con los participantes:
         </p>
         <div style={{ background: C.bg, border: `2px dashed ${C.gold}`, borderRadius: 12,
@@ -474,23 +511,34 @@ const CrearCataView = ({ onVolver }) => {
           <div style={{ fontFamily: F.script, fontSize: 48, fontWeight: 700, color: C.burgundy,
             letterSpacing: 8 }}>{codigo}</div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={copiar} style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "12px",
-            fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-            {copiado ? "✓ Copiado" : "📋 Copiar código"}
-          </button>
-          <button onClick={onVolver} style={{ background: "none", color: C.muted,
-            border: `1px solid ${C.border}`, borderRadius: 9, padding: "12px 16px",
-            fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
-            Inicio
-          </button>
-        </div>
+        <button onClick={copiar} style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+          color: "#FDF7F0", border: "none", borderRadius: 9, padding: "12px",
+          fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 10 }}>
+          {copiado ? "✓ Código copiado" : "📋 Copiar código"}
+        </button>
       </div>
-      <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 12, fontStyle: "italic", marginTop: 20 }}>
-        Los participantes usan "Unirse a Cata Grupal" e introducen el código.<br/>
-        Cuando finalice, accede con el mismo código para ver los resultados.
-      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Anfitrión también puede catar */}
+        <UnirseCataInline codigo={codigo} nombreInicial="Anfitrión" onVolver={onVolver} />
+
+        {/* Finalizar cata */}
+        {!resultadosUrl ? (
+          <button onClick={finalizarDesdeCreador} disabled={finalizando}
+            style={{ background: "none", color: C.burgundy, border: `2px solid ${C.burgundy}`,
+              borderRadius: 9, padding: "13px", fontSize: 14, cursor: "pointer", fontFamily: F.serif, fontWeight: 700 }}>
+            {finalizando ? "Finalizando..." : "🏁 Finalizar Cata y Ver Resultados"}
+          </button>
+        ) : (
+          <UnirseCataResultados codigo={codigo} onVolver={onVolver} />
+        )}
+
+        <button onClick={() => { if (window.confirm("¿Salir? La cata seguirá activa con el código " + codigo)) onVolver(); }}
+          style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+            borderRadius: 9, padding: "12px", fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
+          Volver al inicio
+        </button>
+      </div>
     </div>
   );
 
@@ -560,15 +608,22 @@ const CrearCataView = ({ onVolver }) => {
 };
 
 // ─── UNIRSE A CATA GRUPAL ──────────────────────────────────────────────────
-const UnirseCataView = ({ onVolver }) => {
-  const [paso, setPaso] = useState("codigo"); // codigo | formulario | enviado | resultados
-  const [codigoInput, setCodigoInput] = useState("");
+const UnirseCataView = ({ onVolver, codigoPreset = "", nombrePreset = "", modoResultados = false }) => {
+  const [paso, setPaso] = useState(modoResultados ? "resultados" : codigoPreset ? "buscando" : "codigo");
+  const [codigoInput, setCodigoInput] = useState(codigoPreset);
   const [cata, setCata] = useState(null);
-  const [nombreCatador, setNombreCatador] = useState("");
+  const [nombreCatador, setNombreCatador] = useState(nombrePreset);
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resumen, setResumen] = useState(null);
+
+  useEffect(() => {
+    if (codigoPreset) {
+      if (modoResultados) cargarResultados(codigoPreset);
+      else buscarCodigo();
+    }
+  }, []);
 
   const buscarCodigo = async () => {
     if (!codigoInput.trim()) return;
@@ -678,14 +733,22 @@ const UnirseCataView = ({ onVolver }) => {
       <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
         borderRadius: 12, padding: "16px 20px", marginBottom: 20,
         display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ color: C.gold, fontSize: 11, fontFamily: F.serif, letterSpacing: 2, textTransform: "uppercase" }}>Cata Grupal · {codigoInput.toUpperCase()}</div>
           <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 22, fontWeight: 700, marginTop: 2 }}>{cata?.vino?.nombre}</div>
           {cata?.vino?.anada && <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: F.serif }}>{cata.vino.bodega} · {cata.vino.anada}</div>}
         </div>
-        <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-          <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 20, fontWeight: 700 }}>{codigoInput.toUpperCase()}</div>
-          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: F.serif }}>código</div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+          <button onClick={() => { if (window.confirm("¿Abandonar la cata? Perderás los datos introducidos.")) onVolver(); }}
+            style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)",
+              color: "#FDF7F0", borderRadius: 8, padding: "5px 10px", cursor: "pointer",
+              fontSize: 11, fontFamily: F.serif }}>
+            ✕ Salir
+          </button>
+          <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "6px 10px", textAlign: "center" }}>
+            <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 18, fontWeight: 700 }}>{codigoInput.toUpperCase()}</div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: F.serif }}>código</div>
+          </div>
         </div>
       </div>
 

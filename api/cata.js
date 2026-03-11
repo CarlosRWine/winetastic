@@ -15,7 +15,8 @@ async function redisGet(key) {
     headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
   });
   const data = await res.json();
-  return data.result ? JSON.parse(data.result) : null;
+  if (!data.result) return null;
+  try { return JSON.parse(data.result); } catch { return null; }
 }
 
 function generarCodigo() {
@@ -28,119 +29,105 @@ function generarCodigo() {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { accion } = req.body;
-
   try {
+    const { accion } = req.body;
 
-    // ── CREAR ──────────────────────────────────────────────────────────────
+    // CREAR
     if (accion === "crear") {
-      const { vino } = req.body;
       const codigo = generarCodigo();
-      const cata = {
-        codigo,
-        vino,
-        estado: "abierta",
-        creada: Date.now(),
-        participantes: []
-      };
+      const cata = { codigo, vino: req.body.vino, estado: "abierta", participantes: [] };
       await redisSet(`cata:${codigo}`, cata);
       return res.status(200).json({ ok: true, codigo });
     }
 
-    // ── UNIRSE ─────────────────────────────────────────────────────────────
+    // UNIRSE
     if (accion === "unirse") {
-      const { codigo } = req.body;
-      const cata = await redisGet(`cata:${codigo.toUpperCase()}`);
-      if (!cata) return res.status(404).json({ error: "Código no encontrado. Comprueba que es correcto." });
-      return res.status(200).json({ ok: true, cata, finalizada: cata.estado === "finalizada" });
+      const codigo = (req.body.codigo || "").toUpperCase().trim();
+      const cata = await redisGet(`cata:${codigo}`);
+      if (!cata) return res.status(200).json({ ok: false, error: "Código no encontrado." });
+      return res.status(200).json({ ok: true, vino: cata.vino, estado: cata.estado });
     }
 
-    // ── PARTICIPAR ─────────────────────────────────────────────────────────
+    // PARTICIPAR
     if (accion === "participar") {
-      const { codigo, nombre_catador, ficha } = req.body;
+      const codigo = (req.body.codigo || "").toUpperCase().trim();
       const cata = await redisGet(`cata:${codigo}`);
-      if (!cata) return res.status(404).json({ error: "Cata no encontrada." });
-      if (cata.estado === "finalizada") return res.status(400).json({ error: "Esta cata ya ha sido finalizada." });
-      
-      // Safety check - ensure participantes is always an array
+      if (!cata) return res.status(200).json({ ok: false, error: "Cata no encontrada." });
+      if (cata.estado === "finalizada") return res.status(200).json({ ok: false, error: "Esta cata ya está finalizada." });
       if (!Array.isArray(cata.participantes)) cata.participantes = [];
-      
       cata.participantes.push({
-        nombre_catador: nombre_catador || "Anónimo",
-        ficha,
-        fecha: Date.now()
+        nombre: req.body.nombre || "Anónimo",
+        ficha: req.body.ficha,
+        ts: Date.now()
       });
       await redisSet(`cata:${codigo}`, cata);
-      return res.status(200).json({ ok: true, participantes: cata.participantes.length });
+      return res.status(200).json({ ok: true, total: cata.participantes.length });
     }
 
-    // ── FINALIZAR ──────────────────────────────────────────────────────────
+    // FINALIZAR
     if (accion === "finalizar") {
-      const { codigo } = req.body;
+      const codigo = (req.body.codigo || "").toUpperCase().trim();
       const cata = await redisGet(`cata:${codigo}`);
-      if (!cata) return res.status(404).json({ error: "Cata no encontrada." });
+      if (!cata) return res.status(200).json({ ok: false, error: "Cata no encontrada." });
       cata.estado = "finalizada";
       await redisSet(`cata:${codigo}`, cata);
       return res.status(200).json({ ok: true });
     }
 
-    // ── RESULTADOS ─────────────────────────────────────────────────────────
+    // RESULTADOS
     if (accion === "resultados") {
-      const { codigo } = req.body;
-      const cata = await redisGet(`cata:${codigo.toUpperCase()}`);
-      if (!cata) return res.status(404).json({ error: "Cata no encontrada." });
+      const codigo = (req.body.codigo || "").toUpperCase().trim();
+      const cata = await redisGet(`cata:${codigo}`);
+      if (!cata) return res.status(200).json({ ok: false, error: "Cata no encontrada." });
 
       const parts = Array.isArray(cata.participantes) ? cata.participantes : [];
-      if (parts.length === 0) return res.status(200).json({ ok: true, cata, resumen: null });
 
-      const avg = (key) => {
-        const vals = parts.map(p => p.ficha[key]).filter(v => v > 0);
-        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : 0;
-      };
+      // Puntuación media
+      const punts = parts.map(p => Number(p.ficha?.puntuacion)).filter(v => !isNaN(v) && v > 0);
+      const punt_media = punts.length ? Math.round(punts.reduce((a,b) => a+b,0) / punts.length) : null;
 
-      const contarTextos = (key) => {
+      // Contar textos de un campo
+      const contar = (campo) => {
         const mapa = {};
         parts.forEach(p => {
-          (p.ficha[key] || []).forEach(item => {
-            if (item.text?.trim()) {
-              const t = item.text.trim().toLowerCase();
-              mapa[t] = (mapa[t] || 0) + 1;
-            }
+          const arr = p.ficha?.[campo] || [];
+          arr.forEach(item => {
+            const t = (item.text || "").trim().toLowerCase();
+            if (t) mapa[t] = (mapa[t] || 0) + 1;
           });
         });
-        return Object.entries(mapa).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([texto, count]) => ({ texto, count }));
+        return Object.entries(mapa)
+          .sort((a,b) => b[1]-a[1])
+          .slice(0, 6)
+          .map(([texto, count]) => ({ texto, count }));
       };
 
-      const colores = {};
+      // Colores
+      const coloresMapa = {};
       parts.forEach(p => {
-        if (p.ficha.color?.trim()) {
-          const c = p.ficha.color.trim().toLowerCase();
-          colores[c] = (colores[c] || 0) + 1;
-        }
+        const c = (p.ficha?.color || "").trim().toLowerCase();
+        if (c) coloresMapa[c] = (coloresMapa[c] || 0) + 1;
       });
+      const colores = Object.entries(coloresMapa)
+        .sort((a,b) => b[1]-a[1]).slice(0,4)
+        .map(([texto, count]) => ({ texto, count }));
 
       const resumen = {
         total: parts.length,
-        punt_media: avg("puntuacion"),
-        punt_vis: avg("punt_vis"),
-        punt_olf: avg("punt_olf"),
-        punt_gus: avg("punt_gus"),
-        seco_dulce: avg("seco_dulce"),
-        astringencia: avg("astringencia"),
-        aromas_parada: contarTextos("arp"),
-        aromas_agitada: contarTextos("ara"),
-        sabores: contarTextos("sab"),
-        colores: Object.entries(colores).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([texto, count]) => ({ texto, count })),
-        participantes: parts.map(p => ({ nombre: p.nombre_catador, puntuacion: p.ficha.puntuacion }))
+        punt_media,
+        colores,
+        aromas: contar("arp"),
+        aromas_agitada: contar("ara"),
+        sabores: contar("sab"),
+        participantes: parts.map(p => ({ nombre: p.nombre, puntuacion: p.ficha?.puntuacion }))
       };
 
-      return res.status(200).json({ ok: true, cata, resumen });
+      return res.status(200).json({ ok: true, vino: cata.vino, estado: cata.estado, resumen });
     }
 
-    return res.status(400).json({ error: "Acción no reconocida." });
+    return res.status(200).json({ ok: false, error: "Acción no reconocida." });
 
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Error interno: " + error.message });
+  } catch (err) {
+    return res.status(200).json({ ok: false, error: "Error interno: " + err.message });
   }
 }

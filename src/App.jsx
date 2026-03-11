@@ -1023,6 +1023,13 @@ const RecomiendaView = () => {
 // ─── APP ───────────────────────────────────────────────────────────────────
 export default function WinetasticApp() {
   const [view, setView] = useState("home");
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap";
+    document.head.appendChild(link);
+  }, []);
   const [fichas, setFichas] = useState(loadFichas);
   const [form, setForm] = useState(newForm());
   const [toast, setToast] = useState("");
@@ -1056,125 +1063,156 @@ export default function WinetasticApp() {
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: F.serif }}>
-      <GoogleFonts />
 
       {/* HERO HEADER — solo en portada */}
       {view === "home" && (
-        <div style={{ background: C.bg, minHeight: "100vh", display: "flex",
-          flexDirection: "column", padding: "0 0 40px" }}>
+        <div style={{ background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
 
-          {/* Hero con logo */}
-          <div style={{
-            background: `linear-gradient(150deg, ${C.burgundy} 0%, ${C.burDark} 100%)`,
-            padding: "48px 28px 36px", textAlign: "center",
-            position: "relative", overflow: "hidden",
-          }}>
-            <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180,
-              borderRadius: "50%", background: "rgba(255,255,255,0.04)" }} />
-            <div style={{ position: "absolute", bottom: -60, left: -30, width: 220, height: 220,
-              borderRadius: "50%", background: "rgba(255,255,255,0.03)" }} />
-            <img src={LOGO} alt="Winetastic App"
-              style={{ height: 100, display: "block", margin: "0 auto 16px",
-                filter: "brightness(1.05) drop-shadow(0 4px 16px rgba(0,0,0,0.3))" }} />
-            <div style={{ color: C.gold, fontFamily: F.serif, fontSize: 11,
-              letterSpacing: 4, textTransform: "uppercase", marginBottom: 6 }}>
-              Tu diario de cata
-            </div>
-            <div style={{ color: "#fff", fontFamily: F.script, fontSize: 22,
-              fontWeight: 500, opacity: 0.9, letterSpacing: "0.01em" }}>
-              Vive tu momento Winetastic
-            </div>
+          {/* ── TOP NAV ── */}
+          <div style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
+            display: "flex", alignItems: "center", padding: "0 16px",
+            position: "sticky", top: 0, zIndex: 100, gap: 4 }}>
+            <img src={LOGO} alt="Winetastic" style={{ height: 28, marginRight: 8, flexShrink: 0 }} />
+            {[["home","Inicio"],["nueva","Nueva Cata"],["fichas","Mis Fichas"],["grupal","Grupal"]].map(([v, l]) => (
+              <button key={v} onClick={() => v === "grupal" ? setView("crear_cata") : setView(v)}
+                style={{
+                  padding: "10px 14px", border: "none", borderRadius: 8, cursor: "pointer",
+                  fontFamily: F.serif, fontSize: 13, fontWeight: view === v || (v === "home") ? 600 : 400,
+                  background: v === "home" ? C.burgundy : "none",
+                  color: v === "home" ? "#fff" : C.muted,
+                  whiteSpace: "nowrap",
+                }}>
+                {l}
+              </button>
+            ))}
           </div>
 
-          {/* Grid de acciones */}
-          <div style={{ padding: "24px 20px 0" }}>
+          <div style={{ padding: "20px 16px", flex: 1 }}>
 
-            {/* Fila 1: Nueva Cata (destacada) + Mis Fichas */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            {/* ── HERO CARD ── */}
+            <div style={{
+              background: `linear-gradient(135deg, ${C.burgundy} 0%, ${C.burDark} 100%)`,
+              borderRadius: 16, padding: "28px 24px", marginBottom: 16,
+              position: "relative", overflow: "hidden",
+            }}>
+              {/* Marca de agua logo */}
+              <img src={LOGO} alt="" aria-hidden="true" style={{
+                position: "absolute", right: -20, bottom: -20,
+                width: 160, height: 160, objectFit: "contain",
+                opacity: 0.08, pointerEvents: "none",
+                filter: "brightness(0) invert(1)",
+              }} />
+              <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140,
+                borderRadius: "50%", background: "rgba(255,255,255,0.04)" }} />
+              <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
+                letterSpacing: 4, textTransform: "uppercase", marginBottom: 10, position: "relative" }}>
+                Tu diario de cata
+              </div>
+              <div style={{ color: "#fff", fontFamily: F.script, fontSize: 28,
+                fontWeight: 600, lineHeight: 1.2, marginBottom: 8, position: "relative" }}>
+                Vive tu momento<br/>Winetastic
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13,
+                fontFamily: F.serif, position: "relative" }}>
+                {fichas.length} {fichas.length === 1 ? "cata guardada" : "catas guardadas"} · 0 grupales
+              </div>
+            </div>
+
+            {/* ── GRID 2×2 ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+
               <button onClick={() => setView("nueva")}
                 style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                  color: "#FDF7F0", border: "none", borderRadius: 14, padding: "20px 16px",
+                  color: "#FDF7F0", border: "none", borderRadius: 14, padding: "20px 18px",
                   cursor: "pointer", textAlign: "left",
-                  boxShadow: `0 6px 20px ${C.burgundy}30`, transition: "transform 0.15s" }}
+                  boxShadow: `0 4px 16px ${C.burgundy}30`, transition: "transform 0.15s" }}
                 onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
                 onMouseOut={e => e.currentTarget.style.transform = "none"}>
-                <div style={{ fontSize: 24, marginBottom: 10 }}>＋</div>
-                <div style={{ fontFamily: F.script, fontSize: 18, fontWeight: 600, marginBottom: 3 }}>Nueva Cata</div>
-                <div style={{ fontSize: 11, opacity: 0.7, fontFamily: F.serif }}>Registra una degustación</div>
+                <div style={{ fontSize: 20, marginBottom: 12, opacity: 0.9 }}>＋</div>
+                <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, marginBottom: 3 }}>Nueva Cata</div>
+                <div style={{ fontSize: 11, opacity: 0.65, fontFamily: F.serif }}>Registra un vino</div>
               </button>
 
               <button onClick={() => setView("fichas")}
                 style={{ background: C.card, color: C.text,
-                  border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 16px",
+                  border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 18px",
                   cursor: "pointer", textAlign: "left",
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.05)", transition: "transform 0.15s" }}
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)", transition: "transform 0.15s" }}
                 onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
                 onMouseOut={e => e.currentTarget.style.transform = "none"}>
-                <div style={{ fontSize: 24, marginBottom: 10, color: C.burgundy }}>◫</div>
-                <div style={{ fontFamily: F.script, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 3 }}>Mis Fichas</div>
-                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>
-                  {fichas.length} {fichas.length === 1 ? "guardada" : "guardadas"}
-                </div>
+                <div style={{ fontSize: 20, marginBottom: 12, color: C.burgundy }}>⊞</div>
+                <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, color: C.text, marginBottom: 3 }}>Mis Fichas</div>
+                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>Tu bodega personal</div>
               </button>
-            </div>
 
-            {/* Recomiéndame — ancho completo */}
-            <button onClick={() => setView("recomienda")}
-              style={{ width: "100%", background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
-                color: C.text, border: "none", borderRadius: 14, padding: "18px 20px",
-                cursor: "pointer", display: "flex", alignItems: "center", gap: 14,
-                boxShadow: `0 4px 16px ${C.gold}35`, transition: "transform 0.15s",
-                marginBottom: 12 }}
-              onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
-              onMouseOut={e => e.currentTarget.style.transform = "none"}>
-              <span style={{ fontSize: 26 }}>✦</span>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontFamily: F.script, fontSize: 18, fontWeight: 600 }}>Recomiéndame un Vino</div>
-                <div style={{ fontSize: 11, opacity: 0.75, fontFamily: F.serif }}>Encuentra el vino perfecto con IA</div>
-              </div>
-            </button>
+              <button onClick={() => setView("recomienda")}
+                style={{ background: C.card, color: C.text,
+                  border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 18px",
+                  cursor: "pointer", textAlign: "left",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)", transition: "transform 0.15s" }}
+                onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                onMouseOut={e => e.currentTarget.style.transform = "none"}>
+                <div style={{ fontSize: 20, marginBottom: 12, color: C.burgundy }}>✦</div>
+                <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, color: C.text, marginBottom: 3 }}>Recomiéndame</div>
+                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>Sugiere un vino con IA</div>
+              </button>
 
-            {/* Separador */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
-              <div style={{ flex: 1, height: 1, background: C.border }} />
-              <span style={{ fontSize: 10, color: C.muted, fontFamily: F.serif,
-                letterSpacing: 2, textTransform: "uppercase" }}>Catas Grupales</span>
-              <div style={{ flex: 1, height: 1, background: C.border }} />
-            </div>
-
-            {/* Fila 3: Crear + Unirse grupal */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <button onClick={() => setView("crear_cata")}
                 style={{ background: C.card, color: C.text,
-                  border: `1px solid ${C.burgundy}40`, borderRadius: 14, padding: "18px 16px",
+                  border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 18px",
                   cursor: "pointer", textAlign: "left",
-                  boxShadow: `0 2px 10px ${C.burgundy}08`, transition: "transform 0.15s" }}
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)", transition: "transform 0.15s" }}
                 onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
                 onMouseOut={e => e.currentTarget.style.transform = "none"}>
-                <div style={{ fontSize: 22, marginBottom: 8, color: C.burgundy }}>🥂</div>
-                <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 3 }}>Crear Cata</div>
-                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>Con código compartido</div>
+                <div style={{ fontSize: 20, marginBottom: 12, color: C.burgundy }}>◈</div>
+                <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, color: C.text, marginBottom: 3 }}>Cata Grupal</div>
+                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>Catar en compañía</div>
               </button>
 
-              <button onClick={() => setView("unirse_cata")}
-                style={{ background: C.card, color: C.text,
-                  border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 16px",
-                  cursor: "pointer", textAlign: "left",
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.04)", transition: "transform 0.15s" }}
-                onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseOut={e => e.currentTarget.style.transform = "none"}>
-                <div style={{ fontSize: 22, marginBottom: 8, color: C.muted }}>🔑</div>
-                <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 3 }}>Unirse</div>
-                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>Tengo un código</div>
-              </button>
             </div>
+            {/* ── ÚLTIMAS CATAS ── */}
+            {fichas.length > 0 && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between",
+                  alignItems: "center", marginBottom: 12 }}>
+                  <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+                    color: C.muted, fontFamily: F.serif }}>Últimas catas</span>
+                  <span onClick={() => setView("fichas")} style={{ fontSize: 12,
+                    color: C.burgundy, fontFamily: F.serif, cursor: "pointer" }}>
+                    Ver todas →
+                  </span>
+                </div>
+                {[...fichas].slice(-3).reverse().map((f, i) => (
+                  <div key={i} style={{
+                    background: C.card, borderRadius: 12, marginBottom: 8,
+                    border: `1px solid ${C.border}`, overflow: "hidden", display: "flex",
+                  }}>
+                    <div style={{ width: 4, flexShrink: 0,
+                      background: i === 0 ? C.burgundy : i === 1 ? C.gold : C.border }} />
+                    <div style={{ flex: 1, padding: "13px 14px",
+                      display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontFamily: F.script,
+                          fontWeight: 600, color: C.text, marginBottom: 2 }}>{f.nombre}</div>
+                        <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>
+                          {[f.bodega, f.anada, f.zona].filter(Boolean).join(" · ")}
+                        </div>
+                      </div>
+                      {f.puntuacion > 0 && (
+                        <div style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+                          background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                          display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ color: "#fff", fontSize: 13,
+                            fontFamily: F.script, fontWeight: 700 }}>{f.puntuacion}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
           </div>
-
-          <p style={{ color: C.border, fontFamily: F.serif, fontSize: 10,
-            marginTop: 32, letterSpacing: 1, textAlign: "center" }}>
-            winetastic-three.vercel.app
-          </p>
         </div>
       )}
 

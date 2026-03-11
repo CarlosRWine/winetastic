@@ -711,6 +711,36 @@ const UnirseCataView = ({ onVolver }) => {
 
 // ── RESULTADOS ─────────────────────────────────────────────────────────────
 const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
+  const [resumenIA, setResumenIA] = useState(resumen?.resumen_ia || null);
+  const [loadingIA, setLoadingIA] = useState(false);
+  const [guardado, setGuardado] = useState(!!resumen?.resumen_ia);
+
+  const generarResumenIA = async () => {
+    setLoadingIA(true);
+    try {
+      // 1. Pedir resumen a la IA
+      const r = await fetch("/api/pista", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "resumen_cata", vino, resumen })
+      });
+      const data = await r.json();
+      if (!data.text) throw new Error("Sin respuesta");
+      setResumenIA(data.text);
+
+      // 2. Guardarlo en Upstash junto con el archivo de catas
+      if (codigo) {
+        await fetch("/api/cata", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accion: "guardar_resumen", codigo, resumen_ia: data.text, resumen, vino })
+        });
+        setGuardado(true);
+      }
+    } catch (e) {
+      alert("Error al generar el resumen: " + e.message);
+    }
+    setLoadingIA(false);
+  };
+
   if (!resumen || resumen.total === 0) return (
     <div style={{ textAlign: "center", padding: "60px 20px" }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>🥂</div>
@@ -802,6 +832,48 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
           <TagList items={resumen.sabores} />
         </Section>
       )}
+
+      {/* Resumen IA */}
+      <Section title="Nota de Cata Colectiva" icon="🤖">
+        {resumenIA ? (
+          <div>
+            <div style={{ background: `linear-gradient(135deg, ${C.burgundy}08, ${C.gold}10)`,
+              border: `1px solid ${C.gold}40`, borderRadius: 10, padding: "16px 18px",
+              fontFamily: F.serif, fontSize: 14, color: C.text, lineHeight: 1.7,
+              fontStyle: "italic", whiteSpace: "pre-wrap" }}>
+              {resumenIA}
+            </div>
+            {guardado && (
+              <p style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, margin: "8px 0 0",
+                textAlign: "right" }}>
+                ✓ Guardado en el archivo de catas
+              </p>
+            )}
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: "8px 0" }}>
+            <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, fontStyle: "italic", margin: "0 0 14px" }}>
+              Genera una descripción profesional del vino basada en las opiniones del grupo.
+            </p>
+            <button onClick={generarResumenIA} disabled={loadingIA}
+              style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                color: "#FDF7F0", border: "none", borderRadius: 9, padding: "12px 24px",
+                fontSize: 14, cursor: loadingIA ? "wait" : "pointer",
+                fontFamily: F.script, fontWeight: 700,
+                display: "flex", alignItems: "center", gap: 10, margin: "0 auto",
+                opacity: loadingIA ? 0.8 : 1 }}>
+              {loadingIA ? (
+                <>
+                  <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.4)",
+                    borderTopColor: "#fff", borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite" }} />
+                  Generando...
+                </>
+              ) : "✨ Generar Nota de Cata con IA"}
+            </button>
+          </div>
+        )}
+      </Section>
 
       <button onClick={onVolver}
         style={{ width: "100%", background: "none", color: C.muted,

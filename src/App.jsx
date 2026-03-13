@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk } from "@clerk/react";
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -1032,7 +1032,7 @@ const RecomiendaView = () => {
 };
 
 // ─── APP ───────────────────────────────────────────────────────────────────
-export default function WinetasticApp() {
+function WinetasticApp() {
   const [view, setView] = useState("home");
 
   useEffect(() => {

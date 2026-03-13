@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk, useAuth } from "@clerk/clerk-react";
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -24,11 +24,14 @@ const F = { script: "'Cormorant Garamond', Georgia, serif", serif: "'DM Sans', s
 const LS_KEY = "wt_fichas_v2";
 
 // ─── API FICHAS ─────────────────────────────────────────────────────────────
-const apiFichas = async (accion, userId, extra = {}) => {
+const apiFichas = async (accion, token, extra = {}) => {
   const r = await fetch("/api/fichas", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accion, userId, ...extra }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({ accion, ...extra }),
   });
   return r.json();
 };
@@ -246,7 +249,7 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
 };
 
 // ─── VISTA MIS FICHAS ──────────────────────────────────────────────────────
-const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
+const MisFichasView = ({ fichas, setFichas, onEdit, onGetToken }) => {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("fecha");
   const [detalle, setDetalle] = useState(null);
@@ -266,7 +269,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
     if (!window.confirm("¿Eliminar esta ficha?")) return;
     // Borrar en la nube (userId viene por prop)
     setFichas(prev => prev.filter(f => f.id !== id));
-    apiFichas("borrar", userId, { fichaId: id }).catch(console.error);
+    onGetToken().then(tok => apiFichas("borrar", tok, { fichaId: id })).catch(console.error);
     if (detalle?.id === id) setDetalle(null);
   };
 
@@ -1043,6 +1046,7 @@ function WinetasticApp() {
   }, []);
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { getToken } = useAuth();
   const userId = user?.id;
   const displayName = user?.username || user?.firstName || user?.primaryEmailAddress?.emailAddress?.split("@")[0] || "";
   const displayFull = user?.username
@@ -1070,11 +1074,11 @@ function WinetasticApp() {
         // Migrar localStorage en primer login
         const local = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
         if (local.length > 0 && !migrada) {
-          await apiFichas("migrar", userId, { fichas: local });
+          const t = await getToken(); await apiFichas("migrar", t, { fichas: local });
           localStorage.removeItem(LS_KEY);
           setMigrada(true);
         }
-        const data = await apiFichas("listar", userId);
+        const t2 = await getToken(); const data = await apiFichas("listar", t2);
         setFichas(data.fichas || []);
       } catch (e) {
         console.error("Error cargando fichas:", e);
@@ -1094,11 +1098,11 @@ function WinetasticApp() {
     const isEdit = !!form.id;
     try {
       if (isEdit) {
-        await apiFichas("actualizar", userId, { fichaId: form.id, ficha: form });
+        const tok = await getToken(); await apiFichas("actualizar", tok, { fichaId: form.id, ficha: form });
         setFichas(prev => prev.map(f => f.id === form.id ? { ...form, fecha: f.fecha } : f));
       } else {
         const fichaConFecha = { ...form, fecha: new Date().toLocaleDateString("es-ES") };
-        const data = await apiFichas("guardar", userId, { ficha: fichaConFecha });
+        const tok = await getToken(); const data = await apiFichas("guardar", tok, { ficha: fichaConFecha });
         setFichas(prev => [...prev, data.ficha]);
       }
       setToast(isEdit ? "✦ ¡Ficha actualizada! 🍷" : "✦ ¡Ficha guardada! 🍷");
@@ -1334,7 +1338,7 @@ function WinetasticApp() {
       {view !== "home" && <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px" }}>
 
         {/* ── VISTA MIS FICHAS ── */}
-        {view === "fichas" && <MisFichasView fichas={fichas} setFichas={setFichas} onEdit={handleEdit} userId={userId} />}
+        {view === "fichas" && <MisFichasView fichas={fichas} setFichas={setFichas} onEdit={handleEdit} onGetToken={getToken} />}
 
         {/* ── VISTA RECOMIÉNDAME ── */}
         {view === "recomienda" && <RecomiendaView />}

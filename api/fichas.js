@@ -1,47 +1,61 @@
-// api/fichas.js — CRUD de fichas por usuario (Upstash Redis)
+// api/fichas.js — CRUD de fichas por usuario (Upstash Redis + Clerk auth)
 
-const URL  = process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+import { createClerkClient } from "@clerk/backend";
 
+const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+
+// ── Redis helpers ─────────────────────────────────────────────────────────────
 async function redisGet(key) {
-  const r = await fetch(`${URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${TOKEN}` }
+  const r = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
   });
   const data = await r.json();
   return data.result ? JSON.parse(data.result) : [];
 }
 
 async function redisSet(key, value) {
-  await fetch(`${URL}/set/${encodeURIComponent(key)}`, {
+  await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      "Content-Type": "text/plain",
-    },
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, "Content-Type": "text/plain" },
     body: JSON.stringify(value),
   });
 }
 
+// ── Verificar token de Clerk ──────────────────────────────────────────────────
+async function getUserId(req) {
+  const authHeader = req.headers["authorization"] || "";
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) return null;
+  try {
+    const payload = await clerk.verifyToken(token);
+    return payload.sub; // userId verificado
+  } catch {
+    return null;
+  }
+}
+
+// ── Handler principal ─────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const { accion, userId, ficha, fichaId, fichas: fichaBulk } = req.body || {};
+  // Verificar identidad — ignoramos cualquier userId del body
+  const userId = await getUserId(req);
+  if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-  if (!userId) return res.status(400).json({ error: "userId requerido" });
-
+  const { accion, ficha, fichaId, fichas: fichaBulk } = req.body || {};
   const KEY = `fichas:${userId}`;
 
   try {
-    // ── LISTAR ────────────────────────────────────────────────────
     if (accion === "listar") {
       const fichas = await redisGet(KEY);
       return res.json({ ok: true, fichas });
     }
 
-    // ── GUARDAR (nueva) ───────────────────────────────────────────
     if (accion === "guardar") {
       const fichas = await redisGet(KEY);
       const nueva = {
@@ -54,7 +68,6 @@ export default async function handler(req, res) {
       return res.json({ ok: true, ficha: nueva });
     }
 
-    // ── ACTUALIZAR ────────────────────────────────────────────────
     if (accion === "actualizar") {
       const fichas = await redisGet(KEY);
       const idx = fichas.findIndex(f => f.id === fichaId);
@@ -63,14 +76,12 @@ export default async function handler(req, res) {
       return res.json({ ok: true });
     }
 
-    // ── BORRAR ────────────────────────────────────────────────────
     if (accion === "borrar") {
       const fichas = await redisGet(KEY);
       await redisSet(KEY, fichas.filter(f => f.id !== fichaId));
       return res.json({ ok: true });
     }
 
-    // ── MIGRAR (localStorage → nube, primera vez) ─────────────────
     if (accion === "migrar") {
       const existing = await redisGet(KEY);
       const existingIds = new Set(existing.map(f => f.id?.toString()));

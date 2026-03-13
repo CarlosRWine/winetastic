@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ClerkProvider, SignedIn, SignedOut, useUser, useClerk } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk } from "@clerk/clerk-react";
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -1536,52 +1536,64 @@ export default function WinetasticApp() {
   );
 }
 // ─── LOGIN SCREEN ───────────────────────────────────────────────────────────
-const LoginScreen = () => {
-  useEffect(() => {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500&display=swap";
-    document.head.appendChild(link);
-  }, []);
+const LoginScreen = () => (
+  <div style={{ background: C.bg, minHeight: "100vh", display: "flex",
+    flexDirection: "column", alignItems: "center" }}>
 
-  return (
-    <div style={{ background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Hero */}
-      <div style={{
-        background: `linear-gradient(135deg, ${C.burgundy} 0%, ${C.burDark} 100%)`,
-        padding: "60px 28px 48px", textAlign: "center", position: "relative", overflow: "hidden",
-      }}>
-        <img src={LOGO} alt="" aria-hidden="true" style={{
-          position: "absolute", right: -20, bottom: -20, width: 160, height: 160,
-          objectFit: "contain", opacity: 0.08, filter: "brightness(0) invert(1)", pointerEvents: "none",
-        }} />
-        <img src={LOGO} alt="Winetastic"
-          style={{ height: 70, display: "block", margin: "0 auto 20px" }} />
-        <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
-          letterSpacing: 4, textTransform: "uppercase", marginBottom: 8 }}>
-          Tu diario de cata
-        </div>
-        <div style={{ color: "#fff", fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize: 26, fontWeight: 600, lineHeight: 1.3 }}>
-          Vive tu momento<br/>Winetastic
-        </div>
+    {/* Logo superior */}
+    <div style={{ paddingTop: 56, paddingBottom: 28, textAlign: "center" }}>
+      <img src={LOGO} alt="Winetastic"
+        style={{ height: 56, display: "block", margin: "0 auto 14px" }} />
+      <div style={{ color: C.muted, fontSize: 10, fontFamily: F.serif,
+        letterSpacing: 4, textTransform: "uppercase", marginBottom: 6 }}>
+        Tu diario de cata
       </div>
-
-      {/* Login card */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", padding: "32px 20px" }}>
-        <div style={{ width: "100%", maxWidth: 380 }}>
-          <p style={{ textAlign: "center", color: C.muted, fontFamily: F.serif,
-            fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
-            Accede para guardar tus catas<br/>y tenerlas siempre disponibles
-          </p>
-          {/* Clerk monta aquí su widget de login */}
-          <div id="clerk-sign-in" />
-        </div>
+      <div style={{ color: C.text, fontFamily: F.script, fontSize: 22, fontWeight: 600 }}>
+        Vive tu momento Winetastic
       </div>
     </div>
-  );
-};
+
+    {/* Separador decorativo */}
+    <div style={{ display: "flex", alignItems: "center", gap: 10,
+      width: "100%", maxWidth: 360, padding: "0 20px", marginBottom: 28 }}>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+      <span style={{ fontSize: 10, color: C.muted, fontFamily: F.serif,
+        letterSpacing: 2, textTransform: "uppercase" }}>Accede</span>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+    </div>
+
+    {/* Widget de Clerk */}
+    <SignIn
+      routing="hash"
+      afterSignInUrl="/"
+      afterSignUpUrl="/"
+      appearance={{
+        variables: {
+          colorPrimary: C.burgundy,
+          colorBackground: C.card,
+          colorText: C.text,
+          colorTextSecondary: C.muted,
+          borderRadius: "10px",
+          fontFamily: "DM Sans, system-ui, sans-serif",
+        },
+        elements: {
+          rootBox: { width: "100%", maxWidth: 360, padding: "0 20px" },
+          card: { boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: `1px solid ${C.border}` },
+          headerTitle: { display: "none" },
+          headerSubtitle: { display: "none" },
+          socialButtonsBlockButton: {
+            border: `1px solid ${C.border}`,
+            borderRadius: "8px",
+          },
+          formButtonPrimary: {
+            background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            borderRadius: "8px",
+          },
+        },
+      }}
+    />
+  </div>
+);
 
 // ─── ROOT EXPORT ─────────────────────────────────────────────────────────────
 export default function App() {

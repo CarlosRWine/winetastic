@@ -1586,6 +1586,82 @@ function WinetasticApp() {
     </div>
   );
 }
+// ─── AGE GATE ────────────────────────────────────────────────────────────────
+const AgeGate = ({ onConfirm }) => (
+  <div style={{ background: C.bg, minHeight: "100vh", display: "flex",
+    flexDirection: "column", alignItems: "center", justifyContent: "center",
+    padding: "32px 24px" }}>
+
+    {/* Logo */}
+    <img src={LOGO} alt="Winetastic"
+      style={{ height: 64, marginBottom: 28 }} />
+
+    {/* Card */}
+    <div style={{ background: C.card, borderRadius: 18, padding: "32px 28px",
+      border: `1px solid ${C.border}`, boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
+      width: "100%", maxWidth: 360, textAlign: "center" }}>
+
+      <div style={{ fontSize: 32, marginBottom: 16 }}>🍷</div>
+
+      <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 600,
+        color: C.text, marginBottom: 8 }}>
+        Bienvenido a Winetastic
+      </div>
+
+      <div style={{ fontFamily: F.serif, fontSize: 13, color: C.muted,
+        lineHeight: 1.6, marginBottom: 28 }}>
+        Esta aplicación contiene contenido<br/>relacionado con el consumo de alcohol.
+      </div>
+
+      <div style={{ fontFamily: F.serif, fontSize: 15, color: C.text,
+        fontWeight: 600, marginBottom: 24 }}>
+        ¿Eres mayor de 18 años?
+      </div>
+
+      <div style={{ display: "flex", gap: 12 }}>
+        <button onClick={() => onConfirm(true)}
+          style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#fff", border: "none", borderRadius: 12, padding: "14px",
+            fontFamily: F.script, fontSize: 18, fontWeight: 600, cursor: "pointer",
+            boxShadow: `0 4px 16px ${C.burgundy}30`, transition: "transform 0.15s" }}
+          onMouseOver={e => e.currentTarget.style.transform = "scale(1.03)"}
+          onMouseOut={e => e.currentTarget.style.transform = "none"}>
+          Sí
+        </button>
+        <button onClick={() => onConfirm(false)}
+          style={{ flex: 1, background: C.bg, color: C.muted,
+            border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px",
+            fontFamily: F.script, fontSize: 18, fontWeight: 600, cursor: "pointer",
+            transition: "transform 0.15s" }}
+          onMouseOver={e => e.currentTarget.style.transform = "scale(1.03)"}
+          onMouseOut={e => e.currentTarget.style.transform = "none"}>
+          No
+        </button>
+      </div>
+    </div>
+
+    <div style={{ marginTop: 24, fontSize: 11, color: C.muted,
+      fontFamily: F.serif, textAlign: "center", lineHeight: 1.6, maxWidth: 280 }}>
+      Al acceder confirmas que tienes la edad legal<br/>para consumir bebidas alcohólicas en tu país.
+    </div>
+  </div>
+);
+
+// ─── PANTALLA "NO PERMITIDO" ─────────────────────────────────────────────────
+const UnderAge = () => (
+  <div style={{ background: C.bg, minHeight: "100vh", display: "flex",
+    flexDirection: "column", alignItems: "center", justifyContent: "center",
+    padding: "32px 24px", textAlign: "center" }}>
+    <img src={LOGO} alt="Winetastic" style={{ height: 48, marginBottom: 24, opacity: 0.5 }} />
+    <div style={{ fontFamily: F.script, fontSize: 22, color: C.text, marginBottom: 12 }}>
+      Lo sentimos
+    </div>
+    <div style={{ fontFamily: F.serif, fontSize: 13, color: C.muted, lineHeight: 1.7, maxWidth: 280 }}>
+      Esta aplicación está destinada exclusivamente a mayores de 18 años.
+    </div>
+  </div>
+);
+
 // ─── LOGIN SCREEN ───────────────────────────────────────────────────────────
 const LoginScreen = () => (
   <div style={{ background: C.bg, minHeight: "100vh", display: "flex",
@@ -1648,6 +1724,22 @@ const LoginScreen = () => (
 
 // ─── ROOT EXPORT ─────────────────────────────────────────────────────────────
 export default function App() {
+  const [ageChecked, setAgeChecked] = useState(() => {
+    return localStorage.getItem("wt_age_ok") === "true";
+  });
+  const [isAdult, setIsAdult] = useState(() => {
+    return localStorage.getItem("wt_age_ok") === "true";
+  });
+
+  const handleAge = (yes) => {
+    setAgeChecked(true);
+    setIsAdult(yes);
+    if (yes) localStorage.setItem("wt_age_ok", "true");
+  };
+
+  if (!ageChecked) return <AgeGate onConfirm={handleAge} />;
+  if (!isAdult) return <UnderAge />;
+
   return (
     <ClerkProvider publishableKey={CLERK_KEY} afterSignInUrl="/" afterSignUpUrl="/">
       <SignedOut>

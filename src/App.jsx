@@ -1348,7 +1348,6 @@ const RecomiendaView = () => {
   );
 };
 
-// ─── APP ───────────────────────────────────────────────────────────────────
 // ─── RECOMENDACIÓN SEMANAL ───────────────────────────────────────────────────
 const RecomendacionSemanal = () => {
   const [visible, setVisible] = useState(true);
@@ -1630,7 +1629,7 @@ function WinetasticApp() {
             {/* ── RECOMENDACIÓN DE LA SEMANA ── */}
             <RecomendacionSemanal />
 
-                        {/* ── ÚLTIMAS CATAS ── */}
+            {/* ── ÚLTIMAS CATAS ── */}
             {fichas.length > 0 && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between",

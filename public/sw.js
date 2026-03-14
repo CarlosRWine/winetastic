@@ -1,4 +1,4 @@
-const CACHE = "winetastic-v1";
+const CACHE = "winetastic-v4";
 const ASSETS = ["/", "/index.html"];
 
 self.addEventListener("install", e => {
@@ -16,15 +16,16 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
-  // API calls — always network first
-  if (e.request.url.includes("/api/")) {
-    e.respondWith(fetch(e.request).catch(() => new Response(JSON.stringify({ error: "Sin conexión" }), { headers: { "Content-Type": "application/json" } })));
-    return;
-  }
+  // Only handle GET requests - never cache POST
+  if (e.request.method !== "GET") return;
+  
+  // API calls — always network, never cache
+  if (e.request.url.includes("/api/")) return;
+
   // Assets — cache first, network fallback
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(response => {
-      if (response.ok) {
+      if (response.ok && e.request.method === "GET") {
         const clone = response.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
       }

@@ -1,60 +1,43 @@
 // api/fichas.js — CRUD de fichas por usuario (Upstash Redis)
-// Auth: verificamos el token JWT de Clerk sin depender de @clerk/backend
 
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-const CLERK_SECRET = process.env.CLERK_SECRET_KEY;
 
-// ── Redis helpers ─────────────────────────────────────────────────────────────
+// ── Upstash REST helpers (formato correcto GET-based) ────────────────────────
 async function redisGet(key) {
-  const r = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-  });
+  const r = await fetch(
+    `${REDIS_URL}/get/${encodeURIComponent(key)}`,
+    { headers: { Authorization: `Bearer ${REDIS_TOKEN}` } }
+  );
   const data = await r.json();
-  return data.result ? JSON.parse(data.result) : [];
+  if (!data.result) return [];
+  try { return JSON.parse(data.result); } catch { return []; }
 }
 
 async function redisSet(key, value) {
-  await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
+  // Upstash: usar pipeline para valores grandes con JSON
+  const r = await fetch(`${REDIS_URL}/pipeline`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, "Content-Type": "text/plain" },
-    body: JSON.stringify(value),
+    headers: {
+      Authorization: `Bearer ${REDIS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([["SET", key, JSON.stringify(value)]]),
   });
-}
-
-// ── Obtener userId del token Clerk (via API de Clerk) ─────────────────────────
-async function getUserId(req) {
-  const auth = req.headers["authorization"] || "";
-  const token = auth.replace("Bearer ", "").trim();
-  if (!token) return null;
-  try {
-    // Verificar token via Clerk REST API — no requiere @clerk/backend
-    const r = await fetch("https://api.clerk.com/v1/tokens/verify", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${CLERK_SECRET}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
-    const data = await r.json();
-    return data.sub || data.user_id || null;
-  } catch {
-    return null;
-  }
+  return r.json();
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const userId = await getUserId(req);
-  if (!userId) return res.status(401).json({ error: "No autorizado" });
+  const { accion, userId, ficha, fichaId, fichas: fichaBulk } = req.body || {};
 
-  const { accion, ficha, fichaId, fichas: fichaBulk } = req.body || {};
+  if (!userId) return res.status(400).json({ error: "userId requerido" });
+
   const KEY = `fichas:${userId}`;
 
   try {
@@ -94,7 +77,10 @@ export default async function handler(req, res) {
       const existingIds = new Set(existing.map(f => f.id?.toString()));
       const nuevas = (fichaBulk || [])
         .filter(f => !existingIds.has(f.id?.toString()))
-        .map(f => ({ ...f, id: f.id || `${Date.now()}_${Math.random().toString(36).slice(2)}` }));
+        .map(f => ({
+          ...f,
+          id: f.id || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        }));
       const merged = [...existing, ...nuevas];
       await redisSet(KEY, merged);
       return res.json({ ok: true, migradas: nuevas.length, total: merged.length });

@@ -1681,7 +1681,7 @@ const EventosView = () => {
                   <div style={{ fontFamily: F.script, fontSize: 18,
                     fontWeight: 700, color: C.burgundy }}>{ev.precio}</div>
                   {ev.activo && (
-                    <a href="mailto:winetasticclub@gmail.com?subject=Reserva: " + ev.titulo
+                    <a href={`mailto:winetasticclub@gmail.com?subject=Reserva: ${ev.titulo}`}
                       style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
                         color: "#fff", borderRadius: 10, padding: "10px 18px",
                         fontSize: 13, fontFamily: F.script, fontWeight: 600,

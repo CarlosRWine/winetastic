@@ -1230,7 +1230,7 @@ function WinetasticApp() {
                   width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(20,15,10,0.55) 0%, rgba(20,15,10,0.82) 100%)" }} />
-                <div style={{ position: "relative", padding: "18px 16px" }}>
+                <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
                   <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>⊞</div>
                   <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
                     color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Mis Fichas</div>
@@ -1248,7 +1248,7 @@ function WinetasticApp() {
                   width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(40,20,10,0.55) 0%, rgba(40,20,10,0.82) 100%)" }} />
-                <div style={{ position: "relative", padding: "18px 16px" }}>
+                <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
                   <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>✦</div>
                   <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
                     color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Recomiéndame</div>
@@ -1266,7 +1266,7 @@ function WinetasticApp() {
                   width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 40%" }} />
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(50,15,10,0.55) 0%, rgba(50,15,10,0.82) 100%)" }} />
-                <div style={{ position: "relative", padding: "18px 16px" }}>
+                <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
                   <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>🥂</div>
                   <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
                     color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Crear Cata</div>

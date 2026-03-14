@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk, useAuth } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk } from "@clerk/clerk-react";
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -33,14 +33,11 @@ const F = { script: "'Cormorant Garamond', Georgia, serif", serif: "'DM Sans', s
 const LS_KEY = "wt_fichas_v2";
 
 // ─── API FICHAS ─────────────────────────────────────────────────────────────
-const apiFichas = async (accion, token, extra = {}) => {
+const apiFichas = async (accion, userId, extra = {}) => {
   const r = await fetch("/api/fichas", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
-    body: JSON.stringify({ accion, ...extra }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accion, userId, ...extra }),
   });
   return r.json();
 };
@@ -258,7 +255,293 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
 };
 
 // ─── VISTA MIS FICHAS ──────────────────────────────────────────────────────
-const MisFichasView = ({ fichas, setFichas, onEdit, onGetToken }) => {
+// ─── PDF GENERATOR ───────────────────────────────────────────────────────────
+const generarPDF = async (f, logoB64) => {
+  // Load jsPDF dynamically
+  if (!window.jspdf) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = 210, M = 18;
+  let y = 0;
+
+  // ── Colores ──
+  const BURG  = [139, 26, 46];
+  const DARK  = [74, 13, 26];
+  const GOLD  = [196, 168, 130];
+  const BG    = [247, 244, 240];
+  const MUTED = [122, 110, 114];
+  const WHITE = [255, 255, 255];
+
+  const setFill = (rgb) => doc.setFillColor(...rgb);
+  const setTxt  = (rgb) => doc.setTextColor(...rgb);
+  const setDraw = (rgb) => doc.setDrawColor(...rgb);
+
+  // ── HEADER BORGOÑA ────────────────────────────────────────────────────────
+  setFill(BURG); doc.rect(0, 0, W, 42, "F");
+  setFill(DARK); doc.rect(0, 34, W, 8, "F");
+
+  // Logo
+  try {
+    doc.addImage(`data:image/png;base64,${logoB64}`, "PNG", M, 7, 22, 22);
+  } catch {}
+
+  // Título app
+  setTxt(GOLD);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("TU DIARIO DE CATA", M + 26, 14);
+  setTxt(WHITE);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("WINETASTIC", M + 26, 22);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  setTxt([255,255,255]);
+  doc.text("Ficha de Cata", M + 26, 29);
+
+  // Puntuación en header
+  if (f.puntuacion !== undefined && f.puntuacion !== "") {
+    setFill(GOLD);
+    doc.circle(W - M - 8, 17, 11, "F");
+    setTxt(DARK);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(String(f.puntuacion), W - M - 8, 19, { align: "center" });
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text("/100", W - M - 8, 24, { align: "center" });
+  }
+
+  y = 50;
+
+  // ── NOMBRE VINO ───────────────────────────────────────────────────────────
+  setTxt(BURG);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(f.nombre || "Sin nombre", M, y);
+  y += 6;
+  if (f.bodega) {
+    setTxt(MUTED);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(f.bodega, M, y);
+    y += 5;
+  }
+
+  // Línea separadora dorada
+  setDraw(GOLD);
+  doc.setLineWidth(0.5);
+  doc.line(M, y, W - M, y);
+  y += 6;
+
+  // ── DATOS GENERALES ───────────────────────────────────────────────────────
+  const datos = [
+    ["Zona", f.zona], ["D.O.", f.do_cl], ["Añada", f.anada],
+    ["Precio", f.precio ? `${f.precio} €` : null], ["Fecha cata", f.fecha],
+  ].filter(([, v]) => v);
+
+  if (datos.length > 0) {
+    // Section header
+    setFill(BURG); doc.rect(M, y - 1, W - M * 2, 7, "F");
+    setTxt(WHITE); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text("IDENTIFICACIÓN", M + 3, y + 4);
+    y += 10;
+
+    const colW = (W - M * 2) / 2;
+    datos.forEach(([label, val], i) => {
+      const x = M + (i % 2) * colW;
+      if (i % 2 === 0 && i > 0) y += 9;
+      setTxt(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text(label.toUpperCase(), x, y);
+      setTxt([26, 16, 20]); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      doc.text(String(val), x, y + 5);
+    });
+    y += 12;
+
+    // Uvas
+    const uvas = f.uvas?.filter(u => u.v) || [];
+    if (uvas.length > 0) {
+      setTxt(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text("UVAS", M, y);
+      y += 4;
+      setTxt(BURG); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      doc.text(uvas.map(u => u.p ? `${u.v} (${u.p}%)` : u.v).join("  ·  "), M, y);
+      y += 8;
+    }
+
+    setDraw([220, 213, 208]); doc.setLineWidth(0.3);
+    doc.line(M, y, W - M, y); y += 6;
+  }
+
+  // ── VISUAL ────────────────────────────────────────────────────────────────
+  setFill(BURG); doc.rect(M, y - 1, W - M * 2, 7, "F");
+  setTxt(WHITE); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+  doc.text("FASE VISUAL", M + 3, y + 4); y += 10;
+
+  if (f.color) {
+    setTxt(MUTED); doc.setFontSize(7); doc.setFont("helvetica", "normal");
+    doc.text("COLOR", M, y);
+    setTxt([26,16,20]); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text(f.color, M, y + 5); y += 9;
+  }
+
+  const visMets = [
+    ["Intensidad", f.int_color], ["Lágrima", f.lagrima],
+    ["Opacidad", f.opacidad], ["Limpieza", f.limpieza], ["Puntuación", f.punt_vis]
+  ].filter(([, v]) => v > 0);
+
+  if (visMets.length > 0) {
+    const colW = (W - M * 2) / 3;
+    visMets.forEach(([label, val], i) => {
+      const x = M + (i % 3) * colW;
+      if (i % 3 === 0 && i > 0) y += 10;
+      setTxt(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text(label.toUpperCase(), x, y);
+      // Draw dots
+      for (let d = 0; d < 5; d++) {
+        setFill(d < val ? BURG : [220, 213, 208]);
+        doc.circle(x + d * 4.5, y + 4, 1.5, "F");
+      }
+    });
+    y += 12;
+  }
+
+  setDraw([220, 213, 208]); doc.setLineWidth(0.3);
+  doc.line(M, y, W - M, y); y += 6;
+
+  // ── OLFATIVO ─────────────────────────────────────────────────────────────
+  setFill(BURG); doc.rect(M, y - 1, W - M * 2, 7, "F");
+  setTxt(WHITE); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+  doc.text("FASE OLFATIVA", M + 3, y + 4); y += 10;
+
+  const arp = f.arp?.filter(a => a.text) || [];
+  const ara = f.ara?.filter(a => a.text) || [];
+
+  if (arp.length > 0) {
+    setTxt(MUTED); doc.setFont("helvetica", "italic"); doc.setFontSize(8);
+    doc.text("Copa en reposo:", M, y); y += 5;
+    arp.forEach(a => {
+      setTxt([26,16,20]); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      doc.text(`· ${a.text}`, M + 3, y);
+      for (let d = 0; d < 5; d++) {
+        setFill(d < a.int ? GOLD : [220, 213, 208]);
+        doc.circle(W - M - 20 + d * 4.5, y - 1, 1.5, "F");
+      }
+      y += 5;
+    });
+  }
+  if (ara.length > 0) {
+    setTxt(MUTED); doc.setFont("helvetica", "italic"); doc.setFontSize(8);
+    doc.text("Tras agitar:", M, y); y += 5;
+    ara.forEach(a => {
+      setTxt([26,16,20]); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      doc.text(`· ${a.text}`, M + 3, y);
+      for (let d = 0; d < 5; d++) {
+        setFill(d < a.int ? GOLD : [220, 213, 208]);
+        doc.circle(W - M - 20 + d * 4.5, y - 1, 1.5, "F");
+      }
+      y += 5;
+    });
+  }
+  if (f.punt_olf > 0) {
+    setTxt(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+    doc.text("PUNTUACIÓN OLFATIVA", M, y);
+    for (let d = 0; d < 5; d++) {
+      setFill(d < f.punt_olf ? BURG : [220, 213, 208]);
+      doc.circle(M + 50 + d * 5, y - 1, 1.8, "F");
+    }
+    y += 7;
+  }
+
+  setDraw([220, 213, 208]); doc.setLineWidth(0.3);
+  doc.line(M, y, W - M, y); y += 6;
+
+  // Check page break
+  if (y > 230) { doc.addPage(); y = 20; }
+
+  // ── GUSTATIVO ─────────────────────────────────────────────────────────────
+  setFill(BURG); doc.rect(M, y - 1, W - M * 2, 7, "F");
+  setTxt(WHITE); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+  doc.text("FASE GUSTATIVA", M + 3, y + 4); y += 10;
+
+  const sab = f.sab?.filter(s => s.text) || [];
+  if (sab.length > 0) {
+    sab.forEach(s => {
+      setTxt([26,16,20]); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      doc.text(`· ${s.text}`, M + 3, y);
+      for (let d = 0; d < 5; d++) {
+        setFill(d < s.int ? GOLD : [220,213,208]);
+        doc.circle(W - M - 20 + d * 4.5, y - 1, 1.5, "F");
+      }
+      y += 5;
+    });
+  }
+
+  const SECO_L = ["", "Muy seco", "Seco", "Semiseco", "Semidulce", "Dulce", "Muy dulce"];
+  if (f.seco_dulce > 0) {
+    setTxt(MUTED); doc.setFontSize(7); doc.setFont("helvetica","normal");
+    doc.text("DULZOR", M, y);
+    setTxt([26,16,20]); doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.text(SECO_L[f.seco_dulce] || "", M + 25, y); y += 6;
+  }
+
+  const gusMets = [
+    ["Astringencia", f.astringencia], ["Retrogusto", f.retro_p], ["Punt. gustativa", f.punt_gus]
+  ].filter(([, v]) => v > 0);
+  if (gusMets.length > 0) {
+    const colW = (W - M * 2) / 3;
+    gusMets.forEach(([label, val], i) => {
+      const x = M + i * colW;
+      setTxt(MUTED); doc.setFont("helvetica","normal"); doc.setFontSize(7);
+      doc.text(label.toUpperCase(), x, y);
+      for (let d = 0; d < 5; d++) {
+        setFill(d < val ? BURG : [220,213,208]);
+        doc.circle(x + d * 4.5, y + 4, 1.5, "F");
+      }
+    });
+    y += 12;
+  }
+
+  if (f.retro_t) {
+    setTxt(MUTED); doc.setFontSize(7); doc.setFont("helvetica","normal");
+    doc.text("NOTA RETROGUSTO", M, y); y += 4;
+    setTxt([26,16,20]); doc.setFont("helvetica","italic"); doc.setFontSize(9);
+    doc.text(f.retro_t, M, y); y += 8;
+  }
+
+  setDraw([220,213,208]); doc.setLineWidth(0.3);
+  doc.line(M, y, W - M, y); y += 6;
+
+  // ── NOTAS FINALES ─────────────────────────────────────────────────────────
+  if (f.notas) {
+    setFill(BURG); doc.rect(M, y - 1, W - M * 2, 7, "F");
+    setTxt(WHITE); doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.text("NOTAS DEL CATADOR", M + 3, y + 4); y += 10;
+    setTxt([26,16,20]); doc.setFont("helvetica","italic"); doc.setFontSize(10);
+    const lines = doc.splitTextToSize(f.notas, W - M * 2);
+    doc.text(lines, M, y); y += lines.length * 5 + 4;
+  }
+
+  // ── FOOTER ────────────────────────────────────────────────────────────────
+  const pageH = doc.internal.pageSize.height;
+  setFill(DARK); doc.rect(0, pageH - 12, W, 12, "F");
+  setTxt(GOLD); doc.setFont("helvetica","normal"); doc.setFontSize(8);
+  doc.text("winetastic.app  ·  Tu diario de cata personal", W / 2, pageH - 4.5, { align: "center" });
+
+  // Save
+  const safeName = (f.nombre || "cata").replace(/[^a-zA-Z0-9À-ɏ\s]/g, "").trim();
+  doc.save(`Winetastic_${safeName}_${f.anada || f.fecha || ""}.pdf`);
+};
+
+const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("fecha");
   const [detalle, setDetalle] = useState(null);
@@ -278,7 +561,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, onGetToken }) => {
     if (!window.confirm("¿Eliminar esta ficha?")) return;
     // Borrar en la nube (userId viene por prop)
     setFichas(prev => prev.filter(f => f.id !== id));
-    onGetToken().then(tok => apiFichas("borrar", tok, { fichaId: id })).catch(console.error);
+    apiFichas("borrar", userId, { fichaId: id }).catch(console.error);
     if (detalle?.id === id) setDetalle(null);
   };
 
@@ -358,7 +641,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, onGetToken }) => {
           {detalle.notas && <p style={{ flex: 1, fontSize: 14, fontFamily: F.serif, fontStyle: "italic", color: C.muted, margin: 0 }}>{detalle.notas}</p>}
         </div>
       </Section>
-      <div style={{ display: "flex", gap: 10, marginTop: 8, marginBottom: 40 }}>
+      <div style={{ display: "flex", gap: 10, marginTop: 8, marginBottom: 12 }}>
         <button onClick={() => { onEdit(detalle); setDetalle(null); }}
           style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
             color: "#FDF7F0", border: "none", borderRadius: 9, padding: "13px",
@@ -367,6 +650,13 @@ const MisFichasView = ({ fichas, setFichas, onEdit, onGetToken }) => {
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
             borderRadius: 9, padding: "13px 20px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>🗑 Borrar</button>
       </div>
+      <button onClick={() => generarPDF(detalle, LOGO.replace("data:image/png;base64,",""))}
+        style={{ width: "100%", background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
+          color: C.text, border: "none", borderRadius: 9, padding: "13px",
+          fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700,
+          marginBottom: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        📄 Descargar Ficha PDF
+      </button>
     </div>
   );
 
@@ -1055,7 +1345,6 @@ function WinetasticApp() {
   }, []);
   const { user } = useUser();
   const { signOut } = useClerk();
-  const { getToken } = useAuth();
   const userId = user?.id;
   const displayName = user?.username || user?.firstName || user?.primaryEmailAddress?.emailAddress?.split("@")[0] || "";
   const displayFull = user?.username
@@ -1083,12 +1372,11 @@ function WinetasticApp() {
         // Migrar localStorage en primer login
         const local = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
         if (local.length > 0 && !migrada) {
-          const t = await getToken(); await apiFichas("migrar", t, { fichas: local });
+          await apiFichas("migrar", userId, { fichas: local });
           localStorage.removeItem(LS_KEY);
           setMigrada(true);
         }
-        const t2 = await getToken();
-        const data = await apiFichas("listar", t2);
+        const data = await apiFichas("listar", userId);
         setFichas(Array.isArray(data?.fichas) ? data.fichas : []);
       } catch (e) {
         console.error("Error cargando fichas:", e);
@@ -1108,12 +1396,11 @@ function WinetasticApp() {
     const isEdit = !!form.id;
     try {
       if (isEdit) {
-        const tok = await getToken(); await apiFichas("actualizar", tok, { fichaId: form.id, ficha: form });
+        await apiFichas("actualizar", userId, { fichaId: form.id, ficha: form });
         setFichas(prev => prev.map(f => f.id === form.id ? { ...form, fecha: f.fecha } : f));
       } else {
         const fichaConFecha = { ...form, fecha: new Date().toLocaleDateString("es-ES") };
-        const tok = await getToken();
-        const data = await apiFichas("guardar", tok, { ficha: fichaConFecha });
+        const data = await apiFichas("guardar", userId, { ficha: fichaConFecha });
         const fichaGuardada = data?.ficha || { ...fichaConFecha, id: Date.now() };
         setFichas(prev => [...prev, fichaGuardada]);
       }
@@ -1298,7 +1585,28 @@ function WinetasticApp() {
                 </div>
               </div>
             </button>
-            {/* ── ÚLTIMAS CATAS ── */}
+            {/* ── RECOMENDACIÓN DE LA SEMANA ── */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between",
+                alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+                  color: C.muted, fontFamily: F.serif }}>Recomendación de la semana</span>
+                <span style={{ fontSize: 10, color: C.gold, fontFamily: F.serif,
+                  letterSpacing: 1 }}>✦ Winetastic</span>
+              </div>
+              <div style={{ borderRadius: 16, overflow: "hidden",
+                boxShadow: "0 6px 24px rgba(0,0,0,0.15)" }}>
+                <img
+                  src="/recomendacion.jpg"
+                  alt="Recomendación de la semana"
+                  style={{ width: "100%", display: "block", objectFit: "cover",
+                    maxHeight: 500, objectPosition: "center top" }}
+                  onError={e => { e.target.parentElement.style.display = "none"; }}
+                />
+              </div>
+            </div>
+
+                        {/* ── ÚLTIMAS CATAS ── */}
             {fichas.length > 0 && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between",
@@ -1385,7 +1693,7 @@ function WinetasticApp() {
       {view !== "home" && <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px" }}>
 
         {/* ── VISTA MIS FICHAS ── */}
-        {view === "fichas" && <MisFichasView fichas={fichas} setFichas={setFichas} onEdit={handleEdit} onGetToken={getToken} />}
+        {view === "fichas" && <MisFichasView fichas={fichas} setFichas={setFichas} onEdit={handleEdit} userId={userId} />}
 
         {/* ── VISTA RECOMIÉNDAME ── */}
         {view === "recomienda" && <RecomiendaView />}

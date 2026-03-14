@@ -2401,9 +2401,6 @@ const LoginScreen = () => (
 
     {/* Widget de Clerk */}
     <SignIn
-      routing="hash"
-      
-      
       appearance={{
         variables: {
           colorPrimary: C.burgundy,

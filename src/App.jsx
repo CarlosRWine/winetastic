@@ -2402,8 +2402,8 @@ const LoginScreen = () => (
     {/* Widget de Clerk */}
     <SignIn
       routing="hash"
-      fallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
+      
+      
       appearance={{
         variables: {
           colorPrimary: C.burgundy,
@@ -2451,7 +2451,7 @@ export default function App() {
   if (!isAdult) return <UnderAge />;
 
   return (
-    <ClerkProvider publishableKey={CLERK_KEY} fallbackRedirectUrl="/" signUpFallbackRedirectUrl="/">
+    <ClerkProvider publishableKey={CLERK_KEY}>
       <SignedOut>
         <LoginScreen />
       </SignedOut>

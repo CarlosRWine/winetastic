@@ -260,13 +260,22 @@ const generarPDF = async (f, logoB64) => {
   // Load jsPDF dynamically
   if (!window.jspdf) {
     await new Promise((resolve, reject) => {
+      // Check if already loading
+      if (document.querySelector('script[data-jspdf]')) {
+        const wait = setInterval(() => {
+          if (window.jspdf) { clearInterval(wait); resolve(); }
+        }, 100);
+        return;
+      }
       const script = document.createElement("script");
       script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+      script.setAttribute("data-jspdf", "1");
       script.onload = resolve;
-      script.onerror = reject;
+      script.onerror = () => reject(new Error("No se pudo cargar jsPDF. Comprueba la conexión."));
       document.head.appendChild(script);
     });
   }
+  if (!window.jspdf) throw new Error("jsPDF no disponible");
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const W = 210, M = 18;
@@ -650,7 +659,13 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
             borderRadius: 9, padding: "13px 20px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>🗑 Borrar</button>
       </div>
-      <button onClick={() => generarPDF(detalle, LOGO.replace("data:image/png;base64,",""))}
+      <button onClick={async () => {
+          try {
+            await generarPDF(detalle, LOGO.replace("data:image/png;base64,",""));
+          } catch(e) {
+            alert("Error al generar PDF: " + e.message);
+          }
+        }}
         style={{ width: "100%", background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
           color: C.text, border: "none", borderRadius: 9, padding: "13px",
           fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700,
@@ -1334,6 +1349,33 @@ const RecomiendaView = () => {
 };
 
 // ─── APP ───────────────────────────────────────────────────────────────────
+// ─── RECOMENDACIÓN SEMANAL ───────────────────────────────────────────────────
+const RecomendacionSemanal = () => {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between",
+        alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+          color: C.muted, fontFamily: F.serif }}>Recomendación de la semana</span>
+        <span style={{ fontSize: 10, color: C.gold, fontFamily: F.serif,
+          letterSpacing: 1 }}>✦ Winetastic</span>
+      </div>
+      <div style={{ borderRadius: 16, overflow: "hidden",
+        boxShadow: "0 6px 24px rgba(0,0,0,0.15)" }}>
+        <img
+          src="/recomendacion.jpg"
+          alt="Recomendación de la semana"
+          style={{ width: "100%", display: "block", objectFit: "cover",
+            objectPosition: "center top" }}
+          onError={() => setVisible(false)}
+        />
+      </div>
+    </div>
+  );
+};
+
 function WinetasticApp() {
   const [view, setView] = useState("home");
 
@@ -1586,25 +1628,7 @@ function WinetasticApp() {
               </div>
             </button>
             {/* ── RECOMENDACIÓN DE LA SEMANA ── */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between",
-                alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
-                  color: C.muted, fontFamily: F.serif }}>Recomendación de la semana</span>
-                <span style={{ fontSize: 10, color: C.gold, fontFamily: F.serif,
-                  letterSpacing: 1 }}>✦ Winetastic</span>
-              </div>
-              <div style={{ borderRadius: 16, overflow: "hidden",
-                boxShadow: "0 6px 24px rgba(0,0,0,0.15)" }}>
-                <img
-                  src="/recomendacion.jpg"
-                  alt="Recomendación de la semana"
-                  style={{ width: "100%", display: "block", objectFit: "cover",
-                    maxHeight: 500, objectPosition: "center top" }}
-                  onError={e => { e.target.parentElement.style.display = "none"; }}
-                />
-              </div>
-            </div>
+            <RecomendacionSemanal />
 
                         {/* ── ÚLTIMAS CATAS ── */}
             {fichas.length > 0 && (

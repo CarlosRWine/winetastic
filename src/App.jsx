@@ -2401,6 +2401,8 @@ const LoginScreen = () => (
 
     {/* Widget de Clerk */}
     <SignIn
+      forceRedirectUrl="/"
+      signUpForceRedirectUrl="/"
       appearance={{
         variables: {
           colorPrimary: C.burgundy,

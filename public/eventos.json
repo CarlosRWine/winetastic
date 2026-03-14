@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "titulo": "Cata Inaugural Winetastic",
+    "fecha": "2026-04-12",
+    "fechaTexto": "12 Abril 2026",
+    "hora": "19:00h",
+    "lugar": "Valdepeñas, Ciudad Real",
+    "descripcion": "Primera cata oficial Winetastic. Tintos de Castilla-La Mancha seleccionados por nuestro equipo.",
+    "precio": "35€/persona",
+    "plazas": 20,
+    "imagen": "/eventos/evento1.jpg",
+    "activo": true
+  },
+  {
+    "id": 2,
+    "titulo": "Blancos de Verano",
+    "fecha": "2026-05-17",
+    "fechaTexto": "17 Mayo 2026",
+    "hora": "20:00h",
+    "lugar": "Por confirmar",
+    "descripcion": "Cata de blancos y rosados para el verano. Próximamente más detalles.",
+    "precio": "Próximamente",
+    "plazas": 20,
+    "imagen": "/eventos/evento2.jpg",
+    "activo": false
+  }
+]

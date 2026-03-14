@@ -1368,9 +1368,346 @@ const RecomendacionSemanal = () => {
           alt="Recomendación de la semana"
           style={{ width: "100%", display: "block", objectFit: "cover",
             objectPosition: "center top" }}
-          onError={() => setVisible(false)}
+          onError={e => {
+            // Intentar con .jpeg si .jpg falla
+            if (!e.target.src.endsWith(".jpeg")) {
+              e.target.src = "/recomendacion.jpeg";
+            } else {
+              setVisible(false);
+            }
+          }}
         />
       </div>
+    </div>
+  );
+};
+
+// ─── ORGANIZA TU PLAN WINETASTIC ─────────────────────────────────────────────
+const OrganizaView = () => {
+  const iBase2 = { width: "100%", background: "#F7F4F0", border: "1px solid #E2DAD5",
+    borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: "'DM Sans', system-ui",
+    color: "#1A1014", outline: "none", boxSizing: "border-box" };
+
+  const [form, setForm] = useState({
+    nombre: "", email: "", telefono: "", provincia: "", ciudad: "",
+    lugar: "", personas: "", tipo: "", presupuesto: "", preferencias: ""
+  });
+  const [estado, setEstado] = useState("idle"); // idle | sending | ok | error
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const enviar = async () => {
+    if (!form.nombre.trim() || !form.email.trim()) {
+      setEstado("error_campos");
+      return;
+    }
+    setEstado("sending");
+    try {
+      const r = await fetch("/api/contacto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await r.json();
+      setEstado(data.ok ? "ok" : "error");
+    } catch {
+      setEstado("error");
+    }
+  };
+
+  if (estado === "ok") return (
+    <div style={{ textAlign: "center", padding: "48px 24px" }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>🍷</div>
+      <div style={{ fontFamily: F.script, fontSize: 24, color: C.burgundy, marginBottom: 8 }}>
+        ¡Solicitud enviada!
+      </div>
+      <div style={{ fontFamily: F.serif, fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
+        Nos pondremos en contacto contigo<br/>en las próximas 24-48 horas.
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+        borderRadius: 14, padding: "20px", marginBottom: 20, position: "relative", overflow: "hidden" }}>
+        <img src={LOGO} alt="" style={{ position: "absolute", right: -10, bottom: -10,
+          width: 100, height: 100, opacity: 0.08, filter: "brightness(0) invert(1)" }} />
+        <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
+          letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Winetastic</div>
+        <div style={{ color: "#fff", fontFamily: F.script, fontSize: 22, fontWeight: 600 }}>
+          Organiza tu Plan Winetastic
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12,
+          fontFamily: F.serif, marginTop: 4 }}>
+          Cuéntanos qué tienes en mente y lo organizamos juntos
+        </div>
+      </div>
+
+      {/* Formulario */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+              textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+              Nombre *
+            </label>
+            <input value={form.nombre} onChange={e => set("nombre", e.target.value)}
+              placeholder="Tu nombre" style={iBase2} />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+              textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+              Teléfono
+            </label>
+            <input value={form.telefono} onChange={e => set("telefono", e.target.value)}
+              placeholder="Tu teléfono" type="tel" style={iBase2} />
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+            textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+            Email *
+          </label>
+          <input value={form.email} onChange={e => set("email", e.target.value)}
+            placeholder="tu@email.com" type="email" style={iBase2} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+              textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+              Ciudad
+            </label>
+            <input value={form.ciudad} onChange={e => set("ciudad", e.target.value)}
+              placeholder="Ciudad" style={iBase2} />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+              textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+              Provincia
+            </label>
+            <input value={form.provincia} onChange={e => set("provincia", e.target.value)}
+              placeholder="Provincia" style={iBase2} />
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+            textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+            Lugar preferido
+          </label>
+          <select value={form.lugar} onChange={e => set("lugar", e.target.value)} style={iBase2}>
+            <option value="">Selecciona una opción</option>
+            <option>Bodega</option>
+            <option>Casa particular</option>
+            <option>Sala de catas</option>
+            <option>Restaurante</option>
+            <option>Sin preferencia</option>
+          </select>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+              textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+              Nº de personas
+            </label>
+            <select value={form.personas} onChange={e => set("personas", e.target.value)} style={iBase2}>
+              <option value="">Selecciona</option>
+              <option>Menos de 8</option>
+              <option>8 - 15</option>
+              <option>15 - 25</option>
+              <option>Más de 25</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+              textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+              Tipo de evento
+            </label>
+            <select value={form.tipo} onChange={e => set("tipo", e.target.value)} style={iBase2}>
+              <option value="">Selecciona</option>
+              <option>Solo cata</option>
+              <option>Cata + actividades</option>
+              <option>Cata + maridaje</option>
+              <option>Evento empresarial</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+            textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+            Presupuesto orientativo
+          </label>
+          <select value={form.presupuesto} onChange={e => set("presupuesto", e.target.value)} style={iBase2}>
+            <option value="">Selecciona</option>
+            <option>Menos de 200€</option>
+            <option>200€ - 500€</option>
+            <option>500€ - 1.000€</option>
+            <option>Más de 1.000€</option>
+            <option>A consultar</option>
+          </select>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 10, color: C.muted, letterSpacing: 2,
+            textTransform: "uppercase", fontFamily: F.serif, display: "block", marginBottom: 5 }}>
+            Preferencias de vinos (opcional)
+          </label>
+          <textarea value={form.preferencias} onChange={e => set("preferencias", e.target.value)}
+            placeholder="Tintos, blancos, de una región concreta, ecológicos..."
+            rows={3} style={{ ...iBase2, resize: "vertical" }} />
+        </div>
+
+        {estado === "error_campos" && (
+          <div style={{ background: "#FFF0F0", border: "1px solid #FFA0A0",
+            borderRadius: 8, padding: "10px 14px", fontSize: 13,
+            fontFamily: F.serif, color: "#C0392B" }}>
+            ⚠️ Por favor completa al menos el nombre y el email.
+          </div>
+        )}
+        {estado === "error" && (
+          <div style={{ background: "#FFF0F0", border: "1px solid #FFA0A0",
+            borderRadius: 8, padding: "10px 14px", fontSize: 13,
+            fontFamily: F.serif, color: "#C0392B" }}>
+            ⚠️ Error al enviar. Escríbenos directamente a winetasticclub@gmail.com
+          </div>
+        )}
+
+        <button onClick={enviar} disabled={estado === "sending"}
+          style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 12, padding: "16px",
+            fontSize: 16, cursor: estado === "sending" ? "wait" : "pointer",
+            fontFamily: F.script, fontWeight: 700, marginBottom: 40,
+            opacity: estado === "sending" ? 0.7 : 1 }}>
+          {estado === "sending" ? "Enviando..." : "🍷 Enviar Solicitud"}
+        </button>
+
+      </div>
+    </div>
+  );
+};
+
+// ─── EVENTOS WINETASTIC ──────────────────────────────────────────────────────
+const EventosView = () => {
+  const [eventos, setEventos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/eventos.json")
+      .then(r => r.json())
+      .then(data => { setEventos(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div style={{ textAlign: "center", padding: 40, color: C.muted, fontFamily: F.serif }}>
+      Cargando eventos...
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+        borderRadius: 14, padding: "20px", marginBottom: 20,
+        position: "relative", overflow: "hidden" }}>
+        <img src={LOGO} alt="" style={{ position: "absolute", right: -10, bottom: -10,
+          width: 100, height: 100, opacity: 0.08, filter: "brightness(0) invert(1)" }} />
+        <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
+          letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Winetastic</div>
+        <div style={{ color: "#fff", fontFamily: F.script, fontSize: 22, fontWeight: 600 }}>
+          Próximos Eventos
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12,
+          fontFamily: F.serif, marginTop: 4 }}>
+          Experiencias únicas organizadas por Winetastic
+        </div>
+      </div>
+
+      {/* Mosaico de eventos */}
+      {eventos.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: C.muted,
+          fontFamily: F.serif, fontSize: 14 }}>
+          Próximamente nuevos eventos. ¡Síguenos!
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {eventos.map(ev => (
+            <div key={ev.id} style={{ background: C.card, borderRadius: 16,
+              overflow: "hidden", border: `1px solid ${C.border}`,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}>
+
+              {/* Imagen del evento */}
+              <div style={{ position: "relative", height: 200, background: C.tag }}>
+                <img src={ev.imagen} alt={ev.titulo}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={e => { e.target.style.display = "none"; }} />
+                {/* Badge activo/próximo */}
+                <div style={{
+                  position: "absolute", top: 12, right: 12,
+                  background: ev.activo ? C.burgundy : "rgba(0,0,0,0.5)",
+                  color: "#fff", borderRadius: 20, padding: "4px 12px",
+                  fontSize: 11, fontFamily: F.serif,
+                }}>
+                  {ev.activo ? "✦ Inscripción abierta" : "Próximamente"}
+                </div>
+              </div>
+
+              {/* Info */}
+              <div style={{ padding: "16px 18px" }}>
+                <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 600,
+                  color: C.text, marginBottom: 6 }}>{ev.titulo}</div>
+
+                <div style={{ display: "flex", gap: 16, marginBottom: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, color: C.burgundy, fontFamily: F.serif }}>
+                    📅 {ev.fechaTexto} · {ev.hora}
+                  </span>
+                  <span style={{ fontSize: 12, color: C.muted, fontFamily: F.serif }}>
+                    📍 {ev.lugar}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: 13, color: C.muted, fontFamily: F.serif,
+                  lineHeight: 1.6, marginBottom: 14 }}>{ev.descripcion}</div>
+
+                <div style={{ display: "flex", alignItems: "center",
+                  justifyContent: "space-between" }}>
+                  <div style={{ fontFamily: F.script, fontSize: 18,
+                    fontWeight: 700, color: C.burgundy }}>{ev.precio}</div>
+                  {ev.activo && (
+                    <a href="mailto:winetasticclub@gmail.com?subject=Reserva: " + ev.titulo
+                      style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                        color: "#fff", borderRadius: 10, padding: "10px 18px",
+                        fontSize: 13, fontFamily: F.script, fontWeight: 600,
+                        textDecoration: "none" }}>
+                      Reservar plaza →
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* CTA contacto */}
+      <div style={{ background: C.cream, borderRadius: 14, padding: "20px",
+        marginTop: 24, marginBottom: 40, textAlign: "center",
+        border: `1px solid ${C.border}` }}>
+        <div style={{ fontFamily: F.script, fontSize: 16, color: C.text, marginBottom: 6 }}>
+          ¿Quieres organizar tu propio evento?
+        </div>
+        <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, marginBottom: 14 }}>
+          winetasticclub@gmail.com
+        </div>
+      </div>
+
     </div>
   );
 };
@@ -1421,6 +1758,8 @@ function WinetasticApp() {
         setFichas(Array.isArray(data?.fichas) ? data.fichas : []);
       } catch (e) {
         console.error("Error cargando fichas:", e);
+        setToast("⚠️ Error al cargar fichas: " + (e?.message || ""));
+        setTimeout(() => setToast(""), 4000);
       } finally {
         setLoadingFichas(false);
       }
@@ -1450,8 +1789,9 @@ function WinetasticApp() {
       setForm(newForm());
       setView("fichas");
     } catch (e) {
-      setToast("⚠️ Error al guardar. Comprueba la conexión.");
-      setTimeout(() => setToast(""), 3000);
+      console.error("Error guardar:", e);
+      setToast("⚠️ Error al guardar: " + (e?.message || "Sin conexión"));
+      setTimeout(() => setToast(""), 4000);
     }
   };
 
@@ -1604,6 +1944,41 @@ function WinetasticApp() {
 
             </div>
 
+
+              {/* Organiza tu Plan */}
+              <button onClick={() => setView("organiza")}
+                style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                  color: "#FDF7F0", border: "none", borderRadius: 14, padding: 0,
+                  cursor: "pointer", overflow: "hidden", height: 140,
+                  boxShadow: `0 4px 16px ${C.burgundy}30`, transition: "transform 0.15s" }}
+                onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                onMouseOut={e => e.currentTarget.style.transform = "none"}>
+                <div style={{ padding: "18px 16px", textAlign: "left" }}>
+                  <div style={{ fontSize: 22, marginBottom: 10, opacity: 0.9 }}>🗓</div>
+                  <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600,
+                    marginBottom: 3 }}>Organiza tu Plan</div>
+                  <div style={{ fontSize: 10, opacity: 0.65, fontFamily: F.serif }}>Crea tu experiencia Winetastic</div>
+                </div>
+              </button>
+
+              {/* Eventos Winetastic */}
+              <button onClick={() => setView("eventos")}
+                style={{ background: C.card, color: C.text,
+                  border: `1px solid ${C.border}`, borderRadius: 14, padding: 0,
+                  cursor: "pointer", overflow: "hidden", height: 140,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)", transition: "transform 0.15s" }}
+                onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                onMouseOut={e => e.currentTarget.style.transform = "none"}>
+                <div style={{ padding: "18px 16px", textAlign: "left" }}>
+                  <div style={{ fontSize: 22, marginBottom: 10, color: C.burgundy }}>🥂</div>
+                  <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600,
+                    color: C.text, marginBottom: 3 }}>Eventos Winetastic</div>
+                  <div style={{ fontSize: 10, color: C.muted, fontFamily: F.serif }}>Próximas experiencias</div>
+                </div>
+              </button>
+
+            </div>
+
             {/* Unirse — ancho completo con foto */}
             <button onClick={() => setView("unirse_cata")}
               style={{ position: "relative", border: "none", borderRadius: 14, padding: 0,
@@ -1686,7 +2061,7 @@ function WinetasticApp() {
               borderBottom: "3px solid transparent" }}>
             ←
           </button>
-          {[["nueva", "✏️ Nueva Cata"], ["fichas", "📋 Mis Fichas"], ["recomienda", "🍾 Recomiéndame"], ["crear_cata", "🥂 Grupal"], ["unirse_cata", "🔑 Unirse"]].map(([v, l]) => (
+          {[["nueva", "✏️ Nueva Cata"], ["fichas", "📋 Mis Fichas"], ["recomienda", "🍾 Recomiéndame"], ["eventos", "📅 Eventos"], ["organiza", "🍷 Organiza"]].map(([v, l]) => (
             <button key={v} onClick={() => setView(v)}
               style={{ flex: 1, padding: "14px 6px", border: "none", cursor: "pointer",
                 fontFamily: F.serif, fontWeight: 700, fontSize: 12,
@@ -1717,6 +2092,12 @@ function WinetasticApp() {
 
         {/* ── VISTA MIS FICHAS ── */}
         {view === "fichas" && <MisFichasView fichas={fichas} setFichas={setFichas} onEdit={handleEdit} userId={userId} />}
+
+        {/* ── VISTA ORGANIZA ── */}
+        {view === "organiza" && <OrganizaView />}
+
+        {/* ── VISTA EVENTOS ── */}
+        {view === "eventos" && <EventosView />}
 
         {/* ── VISTA RECOMIÉNDAME ── */}
         {view === "recomienda" && <RecomiendaView />}

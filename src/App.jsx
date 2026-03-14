@@ -1942,8 +1942,6 @@ function WinetasticApp() {
                 </div>
               </button>
 
-            </div>
-
 
               {/* Organiza tu Plan */}
               <button onClick={() => setView("organiza")}

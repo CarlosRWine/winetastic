@@ -3,7 +3,6 @@
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-// ── Upstash REST helpers (formato correcto GET-based) ────────────────────────
 async function redisGet(key) {
   const r = await fetch(
     `${REDIS_URL}/get/${encodeURIComponent(key)}`,
@@ -15,19 +14,14 @@ async function redisGet(key) {
 }
 
 async function redisSet(key, value) {
-  // Upstash: usar pipeline para valores grandes con JSON
-  const r = await fetch(`${REDIS_URL}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${REDIS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify([["SET", key, JSON.stringify(value)]]),
-  });
-  return r.json();
+  // Upstash REST API: SET via GET request with value in URL
+  const encoded = encodeURIComponent(JSON.stringify(value));
+  await fetch(
+    `${REDIS_URL}/set/${encodeURIComponent(key)}/${encoded}`,
+    { headers: { Authorization: `Bearer ${REDIS_TOKEN}` } }
+  );
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -35,7 +29,6 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const { accion, userId, ficha, fichaId, fichas: fichaBulk } = req.body || {};
-
   if (!userId) return res.status(400).json({ error: "userId requerido" });
 
   const KEY = `fichas:${userId}`;
@@ -77,10 +70,7 @@ export default async function handler(req, res) {
       const existingIds = new Set(existing.map(f => f.id?.toString()));
       const nuevas = (fichaBulk || [])
         .filter(f => !existingIds.has(f.id?.toString()))
-        .map(f => ({
-          ...f,
-          id: f.id || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        }));
+        .map(f => ({ ...f, id: f.id || `${Date.now()}_${Math.random().toString(36).slice(2)}` }));
       const merged = [...existing, ...nuevas];
       await redisSet(KEY, merged);
       return res.json({ ok: true, migradas: nuevas.length, total: merged.length });

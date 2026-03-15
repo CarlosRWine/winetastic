@@ -33,6 +33,8 @@ const F = { script: "'Cormorant Garamond', Georgia, serif", serif: "'DM Sans', s
 const LS_KEY = "wt_fichas_v2";
 
 // ─── API FICHAS ─────────────────────────────────────────────────────────────
+const LS_CLOUD_KEY = "wt_fichas_cloud";
+
 const apiFichas = async (accion, userId, extra = {}) => {
   const r = await fetch("/api/fichas", {
     method: "POST",
@@ -40,6 +42,14 @@ const apiFichas = async (accion, userId, extra = {}) => {
     body: JSON.stringify({ accion, userId, ...extra }),
   });
   return r.json();
+};
+
+// Guardar en localStorage como backup siempre
+const saveLocal = (fichas) => {
+  try { localStorage.setItem(LS_CLOUD_KEY, JSON.stringify(fichas)); } catch {}
+};
+const loadLocal = () => {
+  try { return JSON.parse(localStorage.getItem(LS_CLOUD_KEY) || "[]"); } catch { return []; }
 };
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
@@ -1746,20 +1756,26 @@ function WinetasticApp() {
     if (!userId) return;
     const cargar = async () => {
       setLoadingFichas(true);
+      // Load local first so UI is instant
+      const localBackup = loadLocal();
+      if (localBackup.length > 0) setFichas(localBackup);
       try {
-        // Migrar localStorage en primer login
-        const local = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
-        if (local.length > 0 && !migrada) {
-          await apiFichas("migrar", userId, { fichas: local });
+        // Migrate old localStorage key
+        const old = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+        if (old.length > 0 && !migrada) {
+          await apiFichas("migrar", userId, { fichas: old });
           localStorage.removeItem(LS_KEY);
           setMigrada(true);
         }
         const data = await apiFichas("listar", userId);
-        setFichas(Array.isArray(data?.fichas) ? data.fichas : []);
+        const cloud = Array.isArray(data?.fichas) ? data.fichas : null;
+        if (cloud !== null) {
+          setFichas(cloud);
+          saveLocal(cloud); // keep local in sync
+        }
       } catch (e) {
         console.error("Error cargando fichas:", e);
-        setToast("⚠️ Error al cargar fichas: " + (e?.message || ""));
-        setTimeout(() => setToast(""), 4000);
+        // Keep showing local backup silently
       } finally {
         setLoadingFichas(false);
       }
@@ -1786,6 +1802,7 @@ function WinetasticApp() {
       }
       setToast(isEdit ? "✦ ¡Ficha actualizada! 🍷" : "✦ ¡Ficha guardada! 🍷");
       setTimeout(() => setToast(""), 3000);
+      setFichas(prev => { saveLocal(prev); return prev; });
       setForm(newForm());
       setView("fichas");
     } catch (e) {
@@ -2401,8 +2418,9 @@ const LoginScreen = () => (
 
     {/* Widget de Clerk */}
     <SignIn
-      forceRedirectUrl="/"
-      signUpForceRedirectUrl="/"
+      routing="hash"
+      afterSignInUrl="/"
+      afterSignUpUrl="/"
       appearance={{
         variables: {
           colorPrimary: C.burgundy,
@@ -2450,7 +2468,7 @@ export default function App() {
   if (!isAdult) return <UnderAge />;
 
   return (
-    <ClerkProvider publishableKey={CLERK_KEY}>
+    <ClerkProvider publishableKey={CLERK_KEY} afterSignInUrl="/" afterSignUpUrl="/">
       <SignedOut>
         <LoginScreen />
       </SignedOut>

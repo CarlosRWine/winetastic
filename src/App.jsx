@@ -2542,11 +2542,10 @@ function WinetasticApp() {
               </Field>
             </Section>
 
+            </>)}
+
             {/* BOTONES */}
             <div style={{ display: "flex", gap: 10 }}>
-              </>)}
-
-            </>)}
             <button onClick={guardar}
                 style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
                   color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",

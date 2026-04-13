@@ -1725,6 +1725,140 @@ const EventosView = () => {
   );
 };
 
+
+// ─── GUÍAS DE CATA (contenido técnico) ───────────────────────────────────────
+const GUIA_CATA = {
+  identificacion: {
+    titulo: "Antes de empezar",
+    icono: "🍾",
+    color: "#8B1A2E",
+    pasos: [
+      "Sirve unos 6-8 cl de vino en una copa de cristal transparente con pie — nunca la llenes más de 1/3.",
+      "Sostén la copa siempre por el pie o el tallo, nunca por el cáliz, para no calentar el vino con el calor de tu mano.",
+      "Anota el nombre, bodega y año que figura en la etiqueta antes de empezar.",
+      "Temperatura recomendada: blancos y rosados 9-12°C, tintos jóvenes 14-16°C, tintos crianza 16-18°C.",
+    ]
+  },
+  visual: {
+    titulo: "Fase Visual",
+    icono: "👁",
+    color: "#6B4C2A",
+    pasos: [
+      "Busca un fondo blanco: una servilleta, un folio o la pared. La luz natural o blanca es la ideal.",
+      "Inclina la copa a 45° sobre el fondo blanco y observa el color desde arriba hacia el borde (menisco).",
+      "El color del centro te indica la intensidad. El borde (menisco) te da pistas sobre la edad: en tintos, un borde teja o anaranjado indica madurez; en jóvenes, el borde es violáceo o rubí.",
+      "Para ver la lágrima: agita suavemente y observa cómo corre el vino por las paredes. Lágrimas lentas y gruesas = vino con más cuerpo y alcohol.",
+    ]
+  },
+  olfativo: {
+    titulo: "Fase Olfativa",
+    icono: "👃",
+    color: "#2D5A1B",
+    pasos: [
+      "Primera nariz: sin agitar, acerca la copa a la nariz e inhala suavemente. Estos son los aromas más volátiles y delicados.",
+      "Segunda nariz: agita la copa en círculos para oxigenar el vino. Vuelve a oler con más intensidad. Ahora los aromas son más complejos.",
+      "Los aromas primarios vienen de la uva: frutas, flores, vegetales. Los secundarios de la fermentación: lácteos, levaduras. Los terciarios de la crianza: vainilla, tostados, cuero.",
+      "Si el vino huele a vinagre, humedad o corcho, puede estar en mal estado. Anótalo.",
+    ]
+  },
+  gustativo: {
+    titulo: "Fase Gustativa",
+    icono: "👅",
+    color: "#1A3A5C",
+    pasos: [
+      "Toma un pequeño sorbo y deja que el vino cubra toda la boca. No tragues inmediatamente.",
+      "Aspira un poco de aire por la boca (como si mascaras el vino) para liberar los aromas retronasal.",
+      "Identifica el orden de las sensaciones: primero el dulzor (punta de la lengua), luego la acidez (lados), los taninos (sensación de sequedad en las encías), y el cuerpo (peso en boca).",
+      "El retrogusto o persistencia es el sabor que queda tras tragar. Un vino de calidad tiene persistencia larga y agradable. Cuenta los segundos.",
+    ]
+  },
+  puntuacion: {
+    titulo: "Puntuación Final",
+    icono: "🏅",
+    color: "#8B1A2E",
+    pasos: [
+      "Ahora que has pasado por las tres fases, puedes emitir tu valoración global.",
+      "Escala de referencia: 90-100 = excepcional, 80-89 = muy bueno, 70-79 = bueno, 60-69 = correcto, <60 = deficiente.",
+      "Anota tus impresiones en texto libre — con el tiempo, estas notas serán muy valiosas para recordar cada vino.",
+      "Un buen vino tiene equilibrio: ningún elemento (acidez, taninos, alcohol, fruta) domina en exceso sobre los demás.",
+    ]
+  }
+};
+
+// ─── COMPONENTE TARJETA GUÍA ─────────────────────────────────────────────────
+const GuiaCard = ({ seccion, onContinuar }) => {
+  const g = GUIA_CATA[seccion];
+  const [paso, setPaso] = useState(0);
+  const total = g.pasos.length;
+
+  return (
+    <div style={{ background: C.card, borderRadius: 16, overflow: "hidden",
+      border: `1px solid ${C.border}`, marginBottom: 20,
+      boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+        padding: "14px 18px", display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 18 }}>{g.icono}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: "#fff", fontFamily: F.script, fontSize: 16, fontWeight: 600 }}>
+            {g.titulo}
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 10,
+            fontFamily: F.serif, letterSpacing: 2 }}>
+            CONSEJO {paso + 1} DE {total}
+          </div>
+        </div>
+        {/* Progress dots */}
+        <div style={{ display: "flex", gap: 5 }}>
+          {g.pasos.map((_, i) => (
+            <div key={i} style={{ width: 7, height: 7, borderRadius: "50%",
+              background: i <= paso ? "#fff" : "rgba(255,255,255,0.3)",
+              transition: "background 0.2s" }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Consejo actual */}
+      <div style={{ padding: "20px 18px" }}>
+        <div style={{ background: `${C.burgundy}08`, borderLeft: `3px solid ${C.burgundy}`,
+          borderRadius: "0 10px 10px 0", padding: "14px 16px", marginBottom: 16 }}>
+          <p style={{ fontFamily: F.serif, fontSize: 14, color: C.text,
+            lineHeight: 1.75, margin: 0 }}>
+            {g.pasos[paso]}
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          {paso > 0 && (
+            <button onClick={() => setPaso(p => p - 1)}
+              style={{ background: "none", border: `1px solid ${C.border}`,
+                borderRadius: 9, padding: "10px 16px", cursor: "pointer",
+                fontFamily: F.serif, fontSize: 13, color: C.muted }}>
+              ← Anterior
+            </button>
+          )}
+          {paso < total - 1 ? (
+            <button onClick={() => setPaso(p => p + 1)}
+              style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                color: "#fff", border: "none", borderRadius: 9, padding: "10px 16px",
+                cursor: "pointer", fontFamily: F.serif, fontSize: 14, fontWeight: 600 }}>
+              Siguiente consejo →
+            </button>
+          ) : (
+            <button onClick={onContinuar}
+              style={{ flex: 1, background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
+                color: C.text, border: "none", borderRadius: 9, padding: "10px 16px",
+                cursor: "pointer", fontFamily: F.script, fontSize: 15, fontWeight: 700 }}>
+              ¡Listo, empezar esta fase! →
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function WinetasticApp() {
   const [view, setView] = useState("home");
 
@@ -1746,6 +1880,8 @@ function WinetasticApp() {
 
   const [fichas, setFichas] = useState([]);
   const [loadingFichas, setLoadingFichas] = useState(true);
+  const [modoGuiado, setModoGuiado] = useState(null); // null=sin elegir, true=guiado, false=experto
+  const [guiaFase, setGuiaFase] = useState(null); // null=mostrando ficha, string=mostrando guía
   const [migrada, setMigrada] = useState(false);
   const [form, setForm] = useState(newForm());
   const [toast, setToast] = useState("");
@@ -1807,6 +1943,8 @@ function WinetasticApp() {
       setTimeout(() => setToast(""), 3000);
       setFichas(prev => { saveLocal(prev); return prev; });
       setForm(newForm());
+      setModoGuiado(null);
+      setGuiaFase(null);
       setView("fichas");
     } catch (e) {
       console.error("Error guardar:", e);
@@ -2138,11 +2276,70 @@ function WinetasticApp() {
             <h1 style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, color: C.burgundy, margin: "0 0 4px" }}>
               {form.id ? "✏️ Editando Ficha" : "Nueva Ficha de Cata"}
             </h1>
-            <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px" }}>
+            <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 20px" }}>
               Registra todos los detalles de tu degustación
             </p>
 
+            {/* ── SELECTOR MODO ── */}
+            {!form.id && modoGuiado === null && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+                <button onClick={() => setModoGuiado(true)}
+                  style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                    color: "#fff", border: "none", borderRadius: 14, padding: "20px 16px",
+                    cursor: "pointer", textAlign: "left",
+                    boxShadow: `0 4px 16px ${C.burgundy}30` }}>
+                  <div style={{ fontSize: 22, marginBottom: 10 }}>🎓</div>
+                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, marginBottom: 4 }}>
+                    Modo Guiado
+                  </div>
+                  <div style={{ fontSize: 11, opacity: 0.75, fontFamily: F.serif, lineHeight: 1.5 }}>
+                    Consejos de sommelier antes de cada fase
+                  </div>
+                </button>
+                <button onClick={() => setModoGuiado(false)}
+                  style={{ background: C.card, color: C.text,
+                    border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 16px",
+                    cursor: "pointer", textAlign: "left",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+                  <div style={{ fontSize: 22, marginBottom: 10, color: C.burgundy }}>📋</div>
+                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, marginBottom: 4 }}>
+                    Modo Experto
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, lineHeight: 1.5 }}>
+                    Ficha completa sin interrupciones
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Botón cambiar modo */}
+            {modoGuiado !== null && !form.id && (
+              <div style={{ textAlign: "right", marginBottom: 12 }}>
+                <button onClick={() => { setModoGuiado(null); setGuiaFase(null); }}
+                  style={{ background: "none", border: `1px solid ${C.border}`,
+                    borderRadius: 8, padding: "5px 12px", cursor: "pointer",
+                    fontSize: 11, color: C.muted, fontFamily: F.serif }}>
+                  Cambiar modo
+                </button>
+              </div>
+            )}
+
+            {/* Ficha: solo visible si se eligió modo o es edición */}
+            {(modoGuiado !== null || !!form.id) && (<>
+
             {/* IDENTIFICACIÓN */}
+            {modoGuiado && guiaFase === "identificacion" && (
+              <GuiaCard seccion="identificacion" onContinuar={() => setGuiaFase(null)} />
+            )}
+            {modoGuiado && guiaFase !== "identificacion" && (
+              <button onClick={() => setGuiaFase("identificacion")}
+                style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
+                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                🎓 Ver consejos para esta fase
+              </button>
+            )}
             <Section title="Identificación del Vino" icon="🍾">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <Field label="Nombre del Vino">
@@ -2202,6 +2399,18 @@ function WinetasticApp() {
             </Section>
 
             {/* VISUAL */}
+            {modoGuiado && guiaFase === "visual" && (
+              <GuiaCard seccion="visual" onContinuar={() => setGuiaFase(null)} />
+            )}
+            {modoGuiado && guiaFase !== "visual" && (
+              <button onClick={() => setGuiaFase("visual")}
+                style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
+                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                🎓 Ver consejos para esta fase
+              </button>
+            )}
             <Section title="Análisis Visual" icon="👁">
               <Field label="Descripción del Color">
                 <TInput value={form.color} onChange={v => set("color", v)} placeholder="Ej: Rojo cereza con ribete granate" />
@@ -2214,6 +2423,18 @@ function WinetasticApp() {
             </Section>
 
             {/* OLFATIVA */}
+            {modoGuiado && guiaFase === "olfativo" && (
+              <GuiaCard seccion="olfativo" onContinuar={() => setGuiaFase(null)} />
+            )}
+            {modoGuiado && guiaFase !== "olfativo" && (
+              <button onClick={() => setGuiaFase("olfativo")}
+                style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
+                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                🎓 Ver consejos para esta fase
+              </button>
+            )}
             <Section title="Análisis Olfativo" icon="👃">
               <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 12px", fontFamily: F.serif }}>— Copa en reposo —</p>
               {form.arp.map((a, i) => <AromaRow key={i} item={a} onChange={v => updRow("arp", i, v)} label="Aroma detectado" index={i} />)}
@@ -2227,6 +2448,18 @@ function WinetasticApp() {
             </Section>
 
             {/* GUSTATIVA */}
+            {modoGuiado && guiaFase === "gustativo" && (
+              <GuiaCard seccion="gustativo" onContinuar={() => setGuiaFase(null)} />
+            )}
+            {modoGuiado && guiaFase !== "gustativo" && (
+              <button onClick={() => setGuiaFase("gustativo")}
+                style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
+                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                🎓 Ver consejos para esta fase
+              </button>
+            )}
             <Section title="Análisis Gustativo" icon="👅">
               {form.sab.map((s, i) => <AromaRow key={i} item={s} onChange={v => updRow("sab", i, v)} label="Sabor detectado" index={i} />)}
               {form.sab.length < 5 && <AddBtn onClick={() => addRow("sab")} label="Añadir sabor" />}
@@ -2250,6 +2483,18 @@ function WinetasticApp() {
             </Section>
 
             {/* FINAL */}
+            {modoGuiado && guiaFase === "puntuacion" && (
+              <GuiaCard seccion="puntuacion" onContinuar={() => setGuiaFase(null)} />
+            )}
+            {modoGuiado && guiaFase !== "puntuacion" && (
+              <button onClick={() => setGuiaFase("puntuacion")}
+                style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
+                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                🎓 Ver consejos para esta fase
+              </button>
+            )}
             <Section title="Puntuación Final" icon="🏅">
               {/* Media orientativa */}
               {(form.punt_vis > 0 || form.punt_olf > 0 || form.punt_gus > 0) && (() => {
@@ -2299,7 +2544,10 @@ function WinetasticApp() {
 
             {/* BOTONES */}
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={guardar}
+              </>)}
+
+            </>)}
+            <button onClick={guardar}
                 style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
                   color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
                   fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700,

@@ -25,12 +25,26 @@ const C = {
   cream: "#F0EAE2", tag: "#EDE8E3",
 };
 
+const fontPreconnect1 = document.createElement("link");
+fontPreconnect1.rel = "preconnect";
+fontPreconnect1.href = "https://fonts.googleapis.com";
+document.head.appendChild(fontPreconnect1);
+
+const fontPreconnect2 = document.createElement("link");
+fontPreconnect2.rel = "preconnect";
+fontPreconnect2.href = "https://fonts.gstatic.com";
+fontPreconnect2.crossOrigin = "anonymous";
+document.head.appendChild(fontPreconnect2);
+
 const fontLink = document.createElement("link");
 fontLink.rel = "stylesheet";
-fontLink.href = "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap";
+fontLink.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600&family=DM+Sans:wght@400;500&display=swap";
 document.head.appendChild(fontLink);
 
-const F = { script: "'Cormorant Garamond', Georgia, serif", serif: "'DM Sans', system-ui, sans-serif" };
+const F = {
+  script: "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
+  serif: "'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+};
 
 // ─── STORAGE KEY (solo para migración) ─────────────────────────────────────
 const LS_KEY = "wt_fichas_v2";
@@ -74,9 +88,9 @@ const Section = ({ title, icon, children }) => (
   <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.border}`,
     marginBottom: 20, overflow: "hidden", boxShadow: "0 2px 12px rgba(114,40,56,0.06)" }}>
     <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-      padding: "13px 20px", display: "flex", alignItems: "center", gap: 8 }}>
-      {icon && <span style={{ fontSize: 15 }}>{icon}</span>}
-      <h2 style={{ margin: 0, color: "#FDF7F0", fontSize: 14, fontFamily: F.script, fontWeight: 700 }}>{title}</h2>
+      padding: "14px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+      <h2 style={{ margin: 0, color: "#FDF7F0", fontSize: 12, fontFamily: F.serif, fontWeight: 500,
+        textTransform: "uppercase", letterSpacing: "0.14em" }}>{title}</h2>
     </div>
     <div style={{ padding: "18px 20px" }}>{children}</div>
   </div>
@@ -208,7 +222,7 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
           padding: "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between",
           borderRadius: "16px 16px 0 0" }}>
           <div>
-            <h2 style={{ margin: 0, color: "#FDF7F0", fontFamily: F.script, fontSize: 22, fontWeight: 700 }}>✦ Dame una Pista</h2>
+            <h2 style={{ margin: 0, color: "#FDF7F0", fontFamily: F.script, fontSize: 24, fontWeight: 500, letterSpacing: "-0.01em" }}>Dame una pista</h2>
             <p style={{ margin: "2px 0 0", color: C.gold, fontSize: 12, fontFamily: F.serif, fontStyle: "italic" }}>{uvaList}</p>
           </div>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none",
@@ -218,7 +232,7 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
         <div style={{ padding: "22px" }}>
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 12, color: C.burgundy, fontFamily: F.serif, textTransform: "uppercase", letterSpacing: 2 }}>🍇 Perfil Varietal</h3>
+              <h3 style={{ margin: 0, fontSize: 11, color: C.burgundy, fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.16em" }}>Perfil varietal</h3>
               <button onClick={fetchPerfil} disabled={loadingPerfil}
                 style={{ fontSize: 11, color: C.muted, background: "none", border: `1px solid ${C.border}`,
                   borderRadius: 5, padding: "3px 10px", cursor: "pointer", fontFamily: F.serif }}>↺ Regenerar</button>
@@ -227,21 +241,22 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
           </div>
           <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 22 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 12, color: C.burgundy, fontFamily: F.serif, textTransform: "uppercase", letterSpacing: 2 }}>🔍 Ficha Online</h3>
+              <h3 style={{ margin: 0, fontSize: 11, color: C.burgundy, fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.16em" }}>Ficha online</h3>
               {!canSearch && <span style={{ fontSize: 11, color: C.muted, fontStyle: "italic", fontFamily: F.serif }}>Requiere nombre y añada</span>}
             </div>
             {canSearch ? (
               <>
                 {!searchText && !loadingSearch && (
                   <button onClick={fetchSearch} style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                    color: "#FDF7F0", border: "none", borderRadius: 8, padding: "11px 22px",
-                    fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700, width: "100%" }}>
-                    🔍 Buscar ficha de "{nombre}" {anada}
+                    color: "#FDF7F0", border: "none", borderRadius: 6, padding: "12px 22px",
+                    fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+                    textTransform: "uppercase", letterSpacing: "0.1em", width: "100%" }}>
+                    Buscar ficha de «{nombre}» {anada}
                   </button>
                 )}
                 {loadingSearch && <Spinner />}
                 {searchText && <ResultBox text={searchText} />}
-                {searchText && <p style={{ fontSize: 10, color: C.muted, fontStyle: "italic", marginTop: 8, fontFamily: F.serif }}>ℹ️ Información de fuentes públicas. Úsala como orientación.</p>}
+                {searchText && <p style={{ fontSize: 10, color: C.muted, fontStyle: "italic", marginTop: 8, fontFamily: F.serif }}>Información de fuentes públicas. Úsala como orientación.</p>}
               </>
             ) : (
               <div style={{ background: C.bg, border: `1px dashed ${C.border}`, borderRadius: 8,
@@ -252,9 +267,10 @@ const PistaModal = ({ uvas, nombre, anada, bodega, onClose }) => {
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 22, justifyContent: "flex-end" }}>
             {(perfilText || searchText) && (
-              <button onClick={handleCopy} style={{ fontSize: 13, color: C.burgundy, background: "none",
-                border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 16px", cursor: "pointer", fontFamily: F.serif }}>
-                {copied ? "✓ Copiado" : "📋 Copiar"}
+              <button onClick={handleCopy} style={{ fontSize: 11, color: C.burgundy, background: "none",
+                border: `1px solid ${C.border}`, borderRadius: 6, padding: "10px 18px", cursor: "pointer",
+                fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                {copied ? "Copiado" : "Copiar"}
               </button>
             )}
             <button onClick={onClose} style={{ fontSize: 13, color: "#FDF7F0", background: C.burgundy,
@@ -605,7 +621,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
           fontSize: 13, marginBottom: 20, display: "flex", alignItems: "center", gap: 6 }}>
         ← Volver
       </button>
-      <Section title={detalle.nombre || "Sin nombre"} icon="🍷">
+      <Section title={detalle.nombre || "Sin nombre"}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
           {[["Zona", detalle.zona], ["D.O.", detalle.do_cl], ["Añada", detalle.anada], ["Bodega", detalle.bodega],
             ["Precio aprox.", detalle.precio ? `${detalle.precio} €` : "—"], ["Fecha cata", detalle.fecha]
@@ -630,7 +646,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
           </div>
         )}
       </Section>
-      <Section title="Visual" icon="👁">
+      <Section title="Visual">
         <div style={{ fontSize: 14, fontFamily: F.serif, marginBottom: 10 }}><b>Color:</b> {detalle.color || "—"}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {[["Intensidad", detalle.int_color], ["Lágrima", detalle.lagrima], ["Opacidad", detalle.opacidad], ["Limpieza", detalle.limpieza], ["Puntuación", detalle.punt_vis]].map(([l, v]) => (
@@ -638,12 +654,12 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
           ))}
         </div>
       </Section>
-      <Section title="Olfativo" icon="👃">
+      <Section title="Olfativo">
         {detalle.arp?.filter(a => a.text).length > 0 && (<><p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 8px", fontFamily: F.serif }}>Copa en reposo</p>{detalle.arp.filter(a => a.text).map((a, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 14, fontFamily: F.serif }}><span>{a.text}</span><ScalePicker value={a.int} onChange={() => {}} /></div>))}</>)}
         {detalle.ara?.filter(a => a.text).length > 0 && (<><p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "12px 0 8px", fontFamily: F.serif }}>Tras agitar</p>{detalle.ara.filter(a => a.text).map((a, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 14, fontFamily: F.serif }}><span>{a.text}</span><ScalePicker value={a.int} onChange={() => {}} /></div>))}</>)}
         <div style={{ marginTop: 10 }}><div style={{ fontSize: 10, color: C.muted, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: F.serif, marginBottom: 4 }}>Puntuación olfativa</div><ScalePicker value={detalle.punt_olf} onChange={() => {}} /></div>
       </Section>
-      <Section title="Gustativo" icon="👅">
+      <Section title="Gustativo">
         {detalle.sab?.filter(s => s.text).map((s, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 14, fontFamily: F.serif }}><span>{s.text}</span><ScalePicker value={s.int} onChange={() => {}} /></div>))}
         <div style={{ marginTop: 10, fontSize: 14, fontFamily: F.serif }}><b>Dulzor:</b> {SECO_LABELS[detalle.seco_dulce]}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
@@ -651,7 +667,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
         </div>
         {detalle.retro_t && <div style={{ marginTop: 10, fontSize: 14, fontFamily: F.serif }}><b>Nota retrogusto:</b> {detalle.retro_t}</div>}
       </Section>
-      <Section title="Puntuación Final" icon="🏅">
+      <Section title="Puntuación final">
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 72, height: 72, borderRadius: "50%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -666,11 +682,13 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
       <div style={{ display: "flex", gap: 10, marginTop: 8, marginBottom: 12 }}>
         <button onClick={() => { onEdit(detalle); setDetalle(null); }}
           style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "13px",
-            fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>✏️ Editar</button>
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "13px",
+            fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.14em" }}>Editar</button>
         <button onClick={() => borrar(detalle.id)}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
-            borderRadius: 9, padding: "13px 20px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>🗑 Borrar</button>
+            borderRadius: 6, padding: "13px 20px", fontSize: 12, cursor: "pointer", fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>Borrar</button>
       </div>
       <button onClick={async () => {
           try {
@@ -680,10 +698,11 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
           }
         }}
         style={{ width: "100%", background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
-          color: C.text, border: "none", borderRadius: 9, padding: "13px",
-          fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700,
+          color: C.text, border: "none", borderRadius: 6, padding: "13px",
+          fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+          textTransform: "uppercase", letterSpacing: "0.14em",
           marginBottom: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-        📄 Descargar Ficha PDF
+        Descargar ficha en PDF
       </button>
     </div>
   );
@@ -821,16 +840,18 @@ const CrearCataView = ({ onVolver }) => {
         </div>
         <button onClick={() => { navigator.clipboard.writeText(codigo); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}
           style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "12px",
-            fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          {copiado ? "✓ Copiado" : "📋 Copiar código"}
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "13px",
+            fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          {copiado ? "Copiado" : "Copiar código"}
         </button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <button onClick={finalizar} disabled={loading}
-          style={{ background: "none", color: C.burgundy, border: `2px solid ${C.burgundy}`,
-            borderRadius: 9, padding: "13px", fontSize: 14, cursor: "pointer", fontFamily: F.serif, fontWeight: 700 }}>
-          {loading ? "Cargando..." : "🏁 Finalizar y Ver Resultados"}
+          style={{ background: "none", color: C.burgundy, border: `1.5px solid ${C.burgundy}`,
+            borderRadius: 6, padding: "13px", fontSize: 12, cursor: "pointer", fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          {loading ? "Cargando…" : "Finalizar y ver resultados"}
         </button>
         <button onClick={() => { if (window.confirm("¿Salir? La cata sigue activa con el código " + codigo)) onVolver(); }}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
@@ -843,9 +864,9 @@ const CrearCataView = ({ onVolver }) => {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto" }}>
-      <h1 style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, color: C.burgundy, margin: "0 0 4px" }}>🥂 Crear Cata Grupal</h1>
+      <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.burgundy, margin: "0 0 4px", letterSpacing: "-0.01em" }}>Crear cata grupal</h1>
       <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px", fontFamily: F.serif }}>Introduce el vino que vais a catar</p>
-      <Section title="Identificación del Vino" icon="🍾">
+      <Section title="Identificación del vino">
         <Field label="Nombre del Vino *">
           <TInput value={nombre} onChange={setNombre} placeholder="Ej: Muga Reserva" />
         </Field>
@@ -858,9 +879,10 @@ const CrearCataView = ({ onVolver }) => {
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={crear} disabled={loading}
           style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
-            fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          {loading ? "Creando..." : "🥂 Crear y Obtener Código"}
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "15px",
+            fontSize: 13, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          {loading ? "Creando…" : "Crear y obtener código"}
         </button>
         <button onClick={onVolver}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
@@ -923,7 +945,7 @@ const UnirseCataView = ({ onVolver }) => {
   if (paso === "codigo") return (
     <div style={{ maxWidth: 400, margin: "0 auto", padding: "32px 20px", textAlign: "center" }}>
       <img src={LOGO} style={{ height: 80, marginBottom: 20 }} />
-      <h1 style={{ fontFamily: F.script, fontSize: 26, fontWeight: 700, color: C.burgundy, margin: "0 0 8px" }}>🔑 Unirse a Cata Grupal</h1>
+      <h1 style={{ fontFamily: F.script, fontSize: 32, fontWeight: 500, color: C.burgundy, margin: "0 0 8px", letterSpacing: "-0.01em" }}>Unirse a una cata grupal</h1>
       <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px", fontFamily: F.serif }}>Introduce el código del anfitrión</p>
       <div style={{ background: C.card, borderRadius: 14, border: `1px solid ${C.border}`, padding: "24px 20px" }}>
         <Field label="Tu nombre (opcional)">
@@ -938,9 +960,10 @@ const UnirseCataView = ({ onVolver }) => {
         {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
         <button onClick={buscar} disabled={loading || !codigoInput.trim()}
           style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
-            fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          {loading ? "Buscando..." : "🔑 Entrar"}
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "14px",
+            fontSize: 13, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          {loading ? "Buscando…" : "Entrar"}
         </button>
       </div>
       <button onClick={onVolver} style={{ marginTop: 16, background: "none", color: C.muted,
@@ -962,12 +985,13 @@ const UnirseCataView = ({ onVolver }) => {
         </div>
         <button onClick={() => { if (window.confirm("¿Abandonar la cata? Perderás los datos.")) onVolver(); }}
           style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#FDF7F0",
-            borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontFamily: F.serif }}>
-          ✕ Salir
+            borderRadius: 6, padding: "7px 14px", cursor: "pointer", fontSize: 11, fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+          Salir
         </button>
       </div>
 
-      <Section title="Análisis Visual" icon="👁">
+      <Section title="Análisis visual">
         <Field label="Color"><TInput value={form.color} onChange={v => setF("color", v)} placeholder="Ej: Rojo cereza" /></Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {[["int_color","Intensidad"],["lagrima","Lágrima"],["opacidad","Opacidad"],["limpieza","Limpieza"],["punt_vis","Punt. Visual"]].map(([k,l]) => (
@@ -976,7 +1000,7 @@ const UnirseCataView = ({ onVolver }) => {
         </div>
       </Section>
 
-      <Section title="Análisis Olfativo" icon="👃">
+      <Section title="Análisis olfativo">
         <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 10px", fontFamily: F.serif }}>— Copa en reposo —</p>
         {form.arp.map((a, i) => <AromaRow key={i} item={a} onChange={v => updRow("arp", i, v)} label="Aroma" index={i} />)}
         {form.arp.length < 5 && <AddBtn onClick={() => addRow("arp")} label="Añadir aroma" />}
@@ -988,14 +1012,14 @@ const UnirseCataView = ({ onVolver }) => {
         <Field label="Punt. Olfativa"><ScalePicker value={form.punt_olf} onChange={v => setF("punt_olf", v)} /></Field>
       </Section>
 
-      <Section title="Análisis Gustativo" icon="👅">
+      <Section title="Análisis gustativo">
         {form.sab.map((s, i) => <AromaRow key={i} item={s} onChange={v => updRow("sab", i, v)} label="Sabor" index={i} />)}
         {form.sab.length < 5 && <AddBtn onClick={() => addRow("sab")} label="Añadir sabor" />}
         <div style={{ height: 1, background: C.border, margin: "14px 0" }} />
         <Field label="Punt. Gustativa"><ScalePicker value={form.punt_gus} onChange={v => setF("punt_gus", v)} /></Field>
       </Section>
 
-      <Section title="Puntuación Final" icon="🏅">
+      <Section title="Puntuación final">
         <Field label="Puntuación (0–100)">
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <input type="range" min={0} max={100} value={form.puntuacion || 0}
@@ -1014,9 +1038,10 @@ const UnirseCataView = ({ onVolver }) => {
       {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, marginBottom: 12 }}>{error}</p>}
       <button onClick={enviar} disabled={loading}
         style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-          color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
-          fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 40 }}>
-        {loading ? "Enviando..." : "🍷 Enviar mi Cata"}
+          color: "#FDF7F0", border: "none", borderRadius: 6, padding: "15px",
+          fontSize: 13, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+          textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 40 }}>
+        {loading ? "Enviando…" : "Enviar mi cata"}
       </button>
     </div>
   );
@@ -1024,15 +1049,16 @@ const UnirseCataView = ({ onVolver }) => {
   // PASO ENVIADO
   if (paso === "enviado") return (
     <div style={{ maxWidth: 400, margin: "0 auto", padding: "60px 20px", textAlign: "center" }}>
-      <div style={{ fontSize: 60, marginBottom: 16 }}>🍷</div>
-      <h2 style={{ fontFamily: F.script, fontSize: 26, color: C.burgundy, fontWeight: 700, margin: "0 0 8px" }}>¡Ficha enviada!</h2>
+      <div style={{ width: 56, height: 1, background: C.gold, margin: "0 auto 24px" }} />
+      <h2 style={{ fontFamily: F.script, fontSize: 32, color: C.burgundy, fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.01em" }}>Ficha enviada</h2>
       <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 14, fontStyle: "italic", margin: "0 0 32px" }}>Tu cata ha sido registrada</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <button onClick={() => verResultados()}
           style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
-            fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          {loading ? "Cargando..." : "📊 Ver resultados globales"}
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "14px",
+            fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          {loading ? "Cargando…" : "Ver resultados globales"}
         </button>
         <button onClick={onVolver}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
@@ -1085,8 +1111,8 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
 
   if (!resumen || resumen.total === 0) return (
     <div style={{ textAlign: "center", padding: "60px 20px" }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🥂</div>
-      <h2 style={{ fontFamily: F.script, fontSize: 22, color: C.burgundy, fontWeight: 700, margin: "0 0 8px" }}>
+      <div style={{ width: 56, height: 1, background: C.gold, margin: "0 auto 24px" }} />
+      <h2 style={{ fontFamily: F.script, fontSize: 28, color: C.burgundy, fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.01em" }}>
         {vino?.nombre}
       </h2>
       <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 14, fontStyle: "italic" }}>
@@ -1104,7 +1130,7 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
         <div key={i} style={{ background: `${C.burgundy}12`, border: `1px solid ${C.burgundy}25`,
           borderRadius: 20, padding: "6px 14px", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 13, fontFamily: F.serif, color: C.text, textTransform: "capitalize" }}>{item.texto}</span>
-          <span style={{ fontSize: 11, fontFamily: F.serif, color: C.burgundy, fontWeight: 700 }}>{item.count}👤</span>
+          <span style={{ fontSize: 11, fontFamily: F.serif, color: C.burgundy, fontWeight: 500, letterSpacing: "0.06em" }}>×{item.count}</span>
         </div>
       ))}
     </div>
@@ -1125,7 +1151,7 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
 
       {/* Puntuación media */}
       {resumen.punt_media !== null && (
-        <Section title="Puntuación Media" icon="🏅">
+        <Section title="Puntuación media">
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <div style={{ width: 80, height: 80, borderRadius: "50%", flexShrink: 0,
               background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
@@ -1149,14 +1175,14 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
 
       {/* Colores */}
       {resumen.colores?.length > 0 && (
-        <Section title="Colores Percibidos" icon="🎨">
+        <Section title="Colores percibidos">
           <TagList items={resumen.colores} />
         </Section>
       )}
 
       {/* Aromas */}
       {(resumen.aromas?.length > 0 || resumen.aromas_agitada?.length > 0) && (
-        <Section title="Aromas Detectados" icon="👃">
+        <Section title="Aromas detectados">
           {resumen.aromas?.length > 0 && <>
             <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 8px", fontFamily: F.serif }}>Copa en reposo</p>
             <TagList items={resumen.aromas} />
@@ -1170,13 +1196,13 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
 
       {/* Sabores */}
       {resumen.sabores?.length > 0 && (
-        <Section title="Sabores Detectados" icon="👅">
+        <Section title="Sabores detectados">
           <TagList items={resumen.sabores} />
         </Section>
       )}
 
       {/* Resumen IA */}
-      <Section title="Nota de Cata Colectiva" icon="🤖">
+      <Section title="Nota de cata colectiva">
         {resumenIA ? (
           <div>
             <div style={{ background: `linear-gradient(135deg, ${C.burgundy}08, ${C.gold}10)`,
@@ -1186,9 +1212,9 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
               {resumenIA}
             </div>
             {guardado && (
-              <p style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, margin: "8px 0 0",
-                textAlign: "right" }}>
-                ✓ Guardado en el archivo de catas
+              <p style={{ fontSize: 10, color: C.muted, fontFamily: F.serif, margin: "8px 0 0",
+                textAlign: "right", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                Guardado en el archivo de catas
               </p>
             )}
           </div>
@@ -1199,9 +1225,10 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
             </p>
             <button onClick={generarResumenIA} disabled={loadingIA}
               style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                color: "#FDF7F0", border: "none", borderRadius: 9, padding: "12px 24px",
-                fontSize: 14, cursor: loadingIA ? "wait" : "pointer",
-                fontFamily: F.script, fontWeight: 700,
+                color: "#FDF7F0", border: "none", borderRadius: 6, padding: "13px 26px",
+                fontSize: 12, cursor: loadingIA ? "wait" : "pointer",
+                fontFamily: F.serif, fontWeight: 500,
+                textTransform: "uppercase", letterSpacing: "0.14em",
                 display: "flex", alignItems: "center", gap: 10, margin: "0 auto",
                 opacity: loadingIA ? 0.8 : 1 }}>
               {loadingIA ? (
@@ -1211,7 +1238,7 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
                     animation: "spin 0.8s linear infinite" }} />
                   Generando...
                 </>
-              ) : "✨ Generar Nota de Cata con IA"}
+              ) : "Generar nota de cata con IA"}
             </button>
           </div>
         )}
@@ -1265,8 +1292,8 @@ const RecomiendaView = () => {
 
   return (
     <div>
-      <h1 style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, color: C.burgundy, margin: "0 0 4px" }}>
-        🍾 Recomiéndame un Vino
+      <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.burgundy, margin: "0 0 4px", letterSpacing: "-0.01em" }}>
+        Recomiéndame un vino
       </h1>
       <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px", fontFamily: F.serif }}>
         Describe qué tipo de vino buscas y la IA encontrará la mejor opción
@@ -1287,11 +1314,12 @@ const RecomiendaView = () => {
           style={{ width: "100%", background: loading || !query.trim()
             ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
             color: loading || !query.trim() ? C.muted : "#2A1218",
-            border: "none", borderRadius: 9, padding: "13px",
-            fontSize: 16, cursor: loading || !query.trim() ? "not-allowed" : "pointer",
-            fontFamily: F.script, fontWeight: 700,
+            border: "none", borderRadius: 6, padding: "14px",
+            fontSize: 13, cursor: loading || !query.trim() ? "not-allowed" : "pointer",
+            fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.14em",
             boxShadow: !loading && query.trim() ? `0 4px 14px ${C.gold}50` : "none" }}>
-          {loading ? "Buscando el vino perfecto..." : "🔍 Buscar"}
+          {loading ? "Buscando el vino perfecto…" : "Buscar"}
         </button>
       </div>
 
@@ -1309,7 +1337,7 @@ const RecomiendaView = () => {
                   transition: "all 0.15s" }}
                 onMouseOver={ev => ev.currentTarget.style.borderColor = C.gold}
                 onMouseOut={ev => ev.currentTarget.style.borderColor = C.border}>
-                🍷 {e}
+                {e}
               </button>
             ))}
           </div>
@@ -1331,10 +1359,10 @@ const RecomiendaView = () => {
         <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.border}`,
           overflow: "hidden", boxShadow: "0 2px 12px rgba(114,40,56,0.06)" }}>
           <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            padding: "13px 20px", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 15 }}>🍾</span>
-            <h2 style={{ margin: 0, color: "#FDF7F0", fontSize: 14, fontFamily: F.script, fontWeight: 700 }}>
-              Recomendación del Sommelier
+            padding: "14px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 style={{ margin: 0, color: "#FDF7F0", fontSize: 12, fontFamily: F.serif, fontWeight: 500,
+              textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              Recomendación del sommelier
             </h2>
           </div>
           <div style={{ padding: "20px", fontSize: 14, lineHeight: 1.85,
@@ -1344,14 +1372,16 @@ const RecomiendaView = () => {
           <div style={{ padding: "0 20px 16px", display: "flex", gap: 10 }}>
             <button onClick={() => { setResultado(""); setQuery(""); }}
               style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                color: "#FDF7F0", border: "none", borderRadius: 8, padding: "11px",
-                fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-              🔍 Nueva búsqueda
+                color: "#FDF7F0", border: "none", borderRadius: 6, padding: "12px",
+                fontSize: 11, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+                textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              Nueva búsqueda
             </button>
             <button onClick={() => navigator.clipboard.writeText(resultado)}
               style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
-                borderRadius: 8, padding: "11px 16px", fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
-              📋 Copiar
+                borderRadius: 6, padding: "12px 18px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+                fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              Copiar
             </button>
           </div>
         </div>
@@ -1372,7 +1402,7 @@ const RecomendacionSemanal = () => {
         <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
           color: C.muted, fontFamily: F.serif }}>Recomendación de la semana</span>
         <span style={{ fontSize: 10, color: C.gold, fontFamily: F.serif,
-          letterSpacing: 1 }}>✦ Winetastic</span>
+          letterSpacing: "0.14em", textTransform: "uppercase" }}>Winetastic</span>
       </div>
       <div style={{ borderRadius: 16, overflow: "hidden",
         boxShadow: "0 6px 24px rgba(0,0,0,0.15)" }}>
@@ -1430,9 +1460,9 @@ const OrganizaView = () => {
 
   if (estado === "ok") return (
     <div style={{ textAlign: "center", padding: "48px 24px" }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🍷</div>
-      <div style={{ fontFamily: F.script, fontSize: 24, color: C.burgundy, marginBottom: 8 }}>
-        ¡Solicitud enviada!
+      <div style={{ width: 56, height: 1, background: C.gold, margin: "0 auto 24px" }} />
+      <div style={{ fontFamily: F.script, fontSize: 30, color: C.burgundy, fontWeight: 500, marginBottom: 8, letterSpacing: "-0.01em" }}>
+        Solicitud enviada
       </div>
       <div style={{ fontFamily: F.serif, fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
         Nos pondremos en contacto contigo<br/>en las próximas 24-48 horas.
@@ -1449,8 +1479,8 @@ const OrganizaView = () => {
           width: 100, height: 100, opacity: 0.08, filter: "brightness(0) invert(1)" }} />
         <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
           letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Winetastic</div>
-        <div style={{ color: "#fff", fontFamily: F.script, fontSize: 22, fontWeight: 600 }}>
-          Organiza tu Plan Winetastic
+        <div style={{ color: "#fff", fontFamily: F.script, fontSize: 28, fontWeight: 500, letterSpacing: "-0.01em" }}>
+          Organiza tu plan Winetastic
         </div>
         <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12,
           fontFamily: F.serif, marginTop: 4 }}>
@@ -1581,24 +1611,25 @@ const OrganizaView = () => {
           <div style={{ background: "#FFF0F0", border: "1px solid #FFA0A0",
             borderRadius: 8, padding: "10px 14px", fontSize: 13,
             fontFamily: F.serif, color: "#C0392B" }}>
-            ⚠️ Por favor completa al menos el nombre y el email.
+            Por favor, completa al menos el nombre y el email.
           </div>
         )}
         {estado === "error" && (
           <div style={{ background: "#FFF0F0", border: "1px solid #FFA0A0",
             borderRadius: 8, padding: "10px 14px", fontSize: 13,
             fontFamily: F.serif, color: "#C0392B" }}>
-            ⚠️ Error al enviar. Escríbenos directamente a winetasticclub@gmail.com
+            Error al enviar. Escríbenos directamente a winetasticclub@gmail.com
           </div>
         )}
 
         <button onClick={enviar} disabled={estado === "sending"}
           style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 12, padding: "16px",
-            fontSize: 16, cursor: estado === "sending" ? "wait" : "pointer",
-            fontFamily: F.script, fontWeight: 700, marginBottom: 40,
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "16px",
+            fontSize: 13, cursor: estado === "sending" ? "wait" : "pointer",
+            fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 40,
             opacity: estado === "sending" ? 0.7 : 1 }}>
-          {estado === "sending" ? "Enviando..." : "🍷 Enviar Solicitud"}
+          {estado === "sending" ? "Enviando…" : "Enviar solicitud"}
         </button>
 
       </div>
@@ -1634,8 +1665,8 @@ const EventosView = () => {
           width: 100, height: 100, opacity: 0.08, filter: "brightness(0) invert(1)" }} />
         <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
           letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Winetastic</div>
-        <div style={{ color: "#fff", fontFamily: F.script, fontSize: 22, fontWeight: 600 }}>
-          Próximos Eventos
+        <div style={{ color: "#fff", fontFamily: F.script, fontSize: 28, fontWeight: 500, letterSpacing: "-0.01em" }}>
+          Próximos eventos
         </div>
         <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12,
           fontFamily: F.serif, marginTop: 4 }}>
@@ -1665,10 +1696,11 @@ const EventosView = () => {
                 <div style={{
                   position: "absolute", top: 12, right: 12,
                   background: ev.activo ? C.burgundy : "rgba(0,0,0,0.5)",
-                  color: "#fff", borderRadius: 20, padding: "4px 12px",
-                  fontSize: 11, fontFamily: F.serif,
+                  color: "#fff", borderRadius: 4, padding: "5px 12px",
+                  fontSize: 10, fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                 }}>
-                  {ev.activo ? "✦ Inscripción abierta" : "Próximamente"}
+                  {ev.activo ? "Inscripción abierta" : "Próximamente"}
                 </div>
               </div>
 
@@ -1677,12 +1709,13 @@ const EventosView = () => {
                 <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 600,
                   color: C.text, marginBottom: 6 }}>{ev.titulo}</div>
 
-                <div style={{ display: "flex", gap: 16, marginBottom: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 12, color: C.burgundy, fontFamily: F.serif }}>
-                    📅 {ev.fechaTexto} · {ev.hora}
+                <div style={{ display: "flex", gap: 18, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: C.burgundy, fontFamily: F.serif, fontWeight: 500,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                    {ev.fechaTexto} · {ev.hora}
                   </span>
-                  <span style={{ fontSize: 12, color: C.muted, fontFamily: F.serif }}>
-                    📍 {ev.lugar}
+                  <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, fontStyle: "italic" }}>
+                    {ev.lugar}
                   </span>
                 </div>
 
@@ -1730,7 +1763,7 @@ const EventosView = () => {
 const GUIA_CATA = {
   identificacion: {
     titulo: "Antes de empezar",
-    icono: "🍾",
+    icono: "",
     color: "#8B1A2E",
     pasos: [
       "Sirve unos 6-8 cl de vino en una copa de cristal transparente con pie — nunca la llenes más de 1/3.",
@@ -1740,8 +1773,8 @@ const GUIA_CATA = {
     ]
   },
   visual: {
-    titulo: "Fase Visual",
-    icono: "👁",
+    titulo: "Fase visual",
+    icono: "",
     color: "#6B4C2A",
     pasos: [
       "Busca un fondo blanco: una servilleta, un folio o la pared. La luz natural o blanca es la ideal.",
@@ -1751,8 +1784,8 @@ const GUIA_CATA = {
     ]
   },
   olfativo: {
-    titulo: "Fase Olfativa",
-    icono: "👃",
+    titulo: "Fase olfativa",
+    icono: "",
     color: "#2D5A1B",
     pasos: [
       "Primera nariz: sin agitar, acerca la copa a la nariz e inhala suavemente. Estos son los aromas más volátiles y delicados.",
@@ -1762,8 +1795,8 @@ const GUIA_CATA = {
     ]
   },
   gustativo: {
-    titulo: "Fase Gustativa",
-    icono: "👅",
+    titulo: "Fase gustativa",
+    icono: "",
     color: "#1A3A5C",
     pasos: [
       "Toma un pequeño sorbo y deja que el vino cubra toda la boca. No tragues inmediatamente.",
@@ -1773,8 +1806,8 @@ const GUIA_CATA = {
     ]
   },
   puntuacion: {
-    titulo: "Puntuación Final",
-    icono: "🏅",
+    titulo: "Puntuación final",
+    icono: "",
     color: "#8B1A2E",
     pasos: [
       "Ahora que has pasado por las tres fases, puedes emitir tu valoración global.",
@@ -1798,15 +1831,14 @@ const GuiaCard = ({ seccion, onContinuar }) => {
 
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-        padding: "14px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 18 }}>{g.icono}</span>
+        padding: "16px 20px", display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ color: "#fff", fontFamily: F.script, fontSize: 16, fontWeight: 600 }}>
-            {g.titulo}
+          <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 10,
+            fontFamily: F.serif, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 4 }}>
+            Consejo {paso + 1} de {total}
           </div>
-          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 10,
-            fontFamily: F.serif, letterSpacing: 2 }}>
-            CONSEJO {paso + 1} DE {total}
+          <div style={{ color: "#fff", fontFamily: F.script, fontSize: 20, fontWeight: 500, letterSpacing: "-0.005em" }}>
+            {g.titulo}
           </div>
         </div>
         {/* Progress dots */}
@@ -1841,16 +1873,18 @@ const GuiaCard = ({ seccion, onContinuar }) => {
           {paso < total - 1 ? (
             <button onClick={() => setPaso(p => p + 1)}
               style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                color: "#fff", border: "none", borderRadius: 9, padding: "10px 16px",
-                cursor: "pointer", fontFamily: F.serif, fontSize: 14, fontWeight: 600 }}>
-              Siguiente consejo →
+                color: "#fff", border: "none", borderRadius: 6, padding: "11px 18px",
+                cursor: "pointer", fontFamily: F.serif, fontSize: 12, fontWeight: 500,
+                textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              Siguiente consejo
             </button>
           ) : (
             <button onClick={onContinuar}
               style={{ flex: 1, background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
-                color: C.text, border: "none", borderRadius: 9, padding: "10px 16px",
-                cursor: "pointer", fontFamily: F.script, fontSize: 15, fontWeight: 700 }}>
-              ¡Listo, empezar esta fase! →
+                color: C.text, border: "none", borderRadius: 6, padding: "11px 18px",
+                cursor: "pointer", fontFamily: F.serif, fontSize: 12, fontWeight: 500,
+                textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              Empezar esta fase
             </button>
           )}
         </div>
@@ -1927,7 +1961,7 @@ function WinetasticApp() {
   const tieneUvas = form.uvas.some(u => u.v.trim());
 
   const guardar = async () => {
-    if (!form.nombre.trim()) { setToast("⚠️ Añade al menos el nombre del vino"); setTimeout(() => setToast(""), 3000); return; }
+    if (!form.nombre.trim()) { setToast("Añade al menos el nombre del vino"); setTimeout(() => setToast(""), 3000); return; }
     const isEdit = !!form.id;
     try {
       if (isEdit) {
@@ -1939,7 +1973,7 @@ function WinetasticApp() {
         const fichaGuardada = data?.ficha || { ...fichaConFecha, id: Date.now() };
         setFichas(prev => [...prev, fichaGuardada]);
       }
-      setToast(isEdit ? "✦ ¡Ficha actualizada! 🍷" : "✦ ¡Ficha guardada! 🍷");
+      setToast(isEdit ? "Ficha actualizada" : "Ficha guardada");
       setTimeout(() => setToast(""), 3000);
       setFichas(prev => { saveLocal(prev); return prev; });
       setForm(newForm());
@@ -1948,7 +1982,7 @@ function WinetasticApp() {
       setView("fichas");
     } catch (e) {
       console.error("Error guardar:", e);
-      setToast("⚠️ Error al guardar: " + (e?.message || "Sin conexión"));
+      setToast("Error al guardar: " + (e?.message || "Sin conexión"));
       setTimeout(() => setToast(""), 4000);
     }
   };
@@ -2038,11 +2072,12 @@ function WinetasticApp() {
                   width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(74,13,26,0.65) 0%, rgba(74,13,26,0.85) 100%)" }} />
-                <div style={{ position: "relative", padding: "18px 16px" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, opacity: 0.9, color: "#fff" }}>＋</div>
-                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
-                    color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>Nueva Cata</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Registra un vino</div>
+                <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
+                  <div style={{ width: 28, height: 1, background: "rgba(255,255,255,0.7)", marginBottom: 12 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 500,
+                    color: "#fff", marginBottom: 3, letterSpacing: "-0.005em", textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>Nueva cata</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.75)", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>Registra un vino</div>
                 </div>
               </button>
 
@@ -2057,10 +2092,11 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(20,15,10,0.55) 0%, rgba(20,15,10,0.82) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>⊞</div>
-                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
-                    color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Mis Fichas</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Tu bodega personal</div>
+                  <div style={{ width: 28, height: 1, background: "rgba(255,255,255,0.7)", marginBottom: 12 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 500,
+                    color: "#fff", marginBottom: 3, letterSpacing: "-0.005em", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Mis fichas</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.75)", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>Tu bodega personal</div>
                 </div>
               </button>
 
@@ -2075,10 +2111,11 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(40,20,10,0.55) 0%, rgba(40,20,10,0.82) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>✦</div>
-                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
-                    color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Recomiéndame</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Sugiere un vino con IA</div>
+                  <div style={{ width: 28, height: 1, background: "rgba(255,255,255,0.7)", marginBottom: 12 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 500,
+                    color: "#fff", marginBottom: 3, letterSpacing: "-0.005em", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Recomiéndame</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.75)", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>Sugiere un vino con IA</div>
                 </div>
               </button>
 
@@ -2093,10 +2130,11 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(50,15,10,0.55) 0%, rgba(50,15,10,0.82) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>🥂</div>
-                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
-                    color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Crear Cata</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Con código compartido</div>
+                  <div style={{ width: 28, height: 1, background: "rgba(255,255,255,0.7)", marginBottom: 12 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 20, fontWeight: 500,
+                    color: "#fff", marginBottom: 3, letterSpacing: "-0.005em", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Crear cata</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.75)", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>Con código compartido</div>
                 </div>
               </button>
 
@@ -2113,10 +2151,11 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(74,13,26,0.55) 0%, rgba(74,13,26,0.82) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.9 }}>🗓</div>
-                  <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600,
-                    color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Organiza tu Plan</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Crea tu experiencia Winetastic</div>
+                  <div style={{ width: 28, height: 1, background: "rgba(255,255,255,0.7)", marginBottom: 12 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 19, fontWeight: 500,
+                    color: "#fff", marginBottom: 3, letterSpacing: "-0.005em", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Organiza tu plan</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.75)", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>Crea tu experiencia</div>
                 </div>
               </button>
 
@@ -2132,10 +2171,11 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(10,10,10,0.45) 0%, rgba(10,10,10,0.78) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.9 }}>🥂</div>
-                  <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600,
-                    color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Eventos Winetastic</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Próximas experiencias</div>
+                  <div style={{ width: 28, height: 1, background: "rgba(255,255,255,0.7)", marginBottom: 12 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 19, fontWeight: 500,
+                    color: "#fff", marginBottom: 3, letterSpacing: "-0.005em", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Eventos Winetastic</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.75)", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>Próximas experiencias</div>
                 </div>
               </button>
 
@@ -2153,13 +2193,14 @@ function WinetasticApp() {
                 width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%" }} />
               <div style={{ position: "absolute", inset: 0,
                 background: "linear-gradient(90deg, rgba(30,50,20,0.78) 0%, rgba(30,50,20,0.45) 100%)" }} />
-              <div style={{ position: "absolute", top: "50%", left: 20,
-                transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ fontSize: 22, color: "#fff", opacity: 0.9 }}>🔑</span>
+              <div style={{ position: "absolute", top: "50%", left: 22,
+                transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 18 }}>
+                <div style={{ width: 1, height: 38, background: "rgba(255,255,255,0.65)" }} />
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontFamily: F.script, fontSize: 18, fontWeight: 600,
-                    color: "#fff", marginBottom: 2, textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>Unirse a una Cata</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontFamily: F.serif }}>Tengo un código de acceso</div>
+                  <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500,
+                    color: "#fff", marginBottom: 2, letterSpacing: "-0.005em", textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>Unirse a una cata</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.8)", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>Tengo un código de acceso</div>
                 </div>
               </div>
             </button>
@@ -2223,13 +2264,14 @@ function WinetasticApp() {
               borderBottom: "3px solid transparent" }}>
             ←
           </button>
-          {[["nueva", "✏️ Nueva Cata"], ["fichas", "📋 Mis Fichas"], ["recomienda", "🍾 Recomiéndame"], ["eventos", "📅 Eventos"], ["organiza", "🍷 Organiza"]].map(([v, l]) => (
+          {[["nueva", "Nueva cata"], ["fichas", "Mis fichas"], ["recomienda", "Recomiéndame"], ["eventos", "Eventos"], ["organiza", "Organiza"]].map(([v, l]) => (
             <button key={v} onClick={() => setView(v)}
               style={{ flex: 1, padding: "14px 6px", border: "none", cursor: "pointer",
-                fontFamily: F.serif, fontWeight: 700, fontSize: 12,
+                fontFamily: F.serif, fontWeight: 500, fontSize: 10,
+                textTransform: "uppercase", letterSpacing: "0.12em",
                 background: view === v ? C.bg : C.card,
                 color: view === v ? C.burgundy : C.muted,
-                borderBottom: view === v ? `3px solid ${C.burgundy}` : "3px solid transparent",
+                borderBottom: view === v ? `2px solid ${C.burgundy}` : "2px solid transparent",
                 transition: "all 0.18s" }}>
               {l}
             </button>
@@ -2273,8 +2315,8 @@ function WinetasticApp() {
         {/* ── VISTA NUEVA FICHA ── */}
         {view === "nueva" && (
           <>
-            <h1 style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, color: C.burgundy, margin: "0 0 4px" }}>
-              {form.id ? "✏️ Editando Ficha" : "Nueva Ficha de Cata"}
+            <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.burgundy, margin: "0 0 4px", letterSpacing: "-0.01em" }}>
+              {form.id ? "Editando ficha" : "Nueva ficha de cata"}
             </h1>
             <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 20px" }}>
               Registra todos los detalles de tu degustación
@@ -2285,25 +2327,26 @@ function WinetasticApp() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
                 <button onClick={() => setModoGuiado(true)}
                   style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                    color: "#fff", border: "none", borderRadius: 14, padding: "20px 16px",
+                    color: "#fff", border: "none", borderRadius: 10, padding: "22px 18px",
                     cursor: "pointer", textAlign: "left",
                     boxShadow: `0 4px 16px ${C.burgundy}30` }}>
-                  <div style={{ fontSize: 22, marginBottom: 10 }}>🎓</div>
-                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, marginBottom: 4 }}>
-                    Modo Guiado
+                  <div style={{ width: 28, height: 1, background: "rgba(255,255,255,0.7)", marginBottom: 14 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500, marginBottom: 6, letterSpacing: "-0.005em" }}>
+                    Modo guiado
                   </div>
-                  <div style={{ fontSize: 11, opacity: 0.75, fontFamily: F.serif, lineHeight: 1.5 }}>
-                    Consejos de sommelier antes de cada fase
+                  <div style={{ fontSize: 10, opacity: 0.85, fontFamily: F.serif, lineHeight: 1.5,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                    Consejos antes de cada fase
                   </div>
                 </button>
                 <button onClick={() => setModoGuiado(false)}
                   style={{ background: C.card, color: C.text,
-                    border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 16px",
+                    border: `1px solid ${C.border}`, borderRadius: 10, padding: "22px 18px",
                     cursor: "pointer", textAlign: "left",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
-                  <div style={{ fontSize: 22, marginBottom: 10, color: C.burgundy }}>📋</div>
-                  <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, marginBottom: 4 }}>
-                    Modo Experto
+                  <div style={{ width: 28, height: 1, background: C.gold, marginBottom: 14 }} />
+                  <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500, marginBottom: 6, color: C.burgundy, letterSpacing: "-0.005em" }}>
+                    Modo experto
                   </div>
                   <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, lineHeight: 1.5 }}>
                     Ficha completa sin interrupciones
@@ -2334,13 +2377,14 @@ function WinetasticApp() {
             {modoGuiado && guiaFase !== "identificacion" && (
               <button onClick={() => setGuiaFase("identificacion")}
                 style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
-                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
-                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  borderRadius: 4, padding: "8px 14px", cursor: "pointer",
+                  fontSize: 10, color: C.burgundy, fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                Ver consejos para esta fase
               </button>
             )}
-            <Section title="Identificación del Vino" icon="🍾">
+            <Section title="Identificación del vino">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <Field label="Nombre del Vino">
                   <TInput value={form.nombre} onChange={v => set("nombre", v)} placeholder="Ej: Vega Sicilia Único" />
@@ -2387,12 +2431,13 @@ function WinetasticApp() {
               <div style={{ marginTop: 8, paddingTop: 14, borderTop: `1px dashed ${C.border}` }}>
                 <button onClick={() => setShowPista(true)} disabled={!tieneUvas}
                   style={{ background: tieneUvas ? `linear-gradient(135deg, ${C.gold}, ${C.goldDark})` : C.border,
-                    color: tieneUvas ? "#2A1218" : C.muted, border: "none", borderRadius: 9,
-                    padding: "12px 22px", fontSize: 15, cursor: tieneUvas ? "pointer" : "not-allowed",
-                    fontFamily: F.script, fontWeight: 700,
+                    color: tieneUvas ? "#2A1218" : C.muted, border: "none", borderRadius: 6,
+                    padding: "13px 22px", fontSize: 12, cursor: tieneUvas ? "pointer" : "not-allowed",
+                    fontFamily: F.serif, fontWeight: 500,
+                    textTransform: "uppercase", letterSpacing: "0.14em",
                     boxShadow: tieneUvas ? `0 4px 14px ${C.gold}50` : "none",
                     display: "flex", alignItems: "center", gap: 8, width: "100%", justifyContent: "center" }}>
-                  💡 Dame una Pista
+                  Dame una pista
                   {!tieneUvas && <span style={{ fontSize: 11, fontFamily: F.serif, fontWeight: "normal", fontStyle: "italic" }}>(introduce al menos una uva)</span>}
                 </button>
               </div>
@@ -2405,13 +2450,14 @@ function WinetasticApp() {
             {modoGuiado && guiaFase !== "visual" && (
               <button onClick={() => setGuiaFase("visual")}
                 style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
-                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
-                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  borderRadius: 4, padding: "8px 14px", cursor: "pointer",
+                  fontSize: 10, color: C.burgundy, fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                Ver consejos para esta fase
               </button>
             )}
-            <Section title="Análisis Visual" icon="👁">
+            <Section title="Análisis visual">
               <Field label="Descripción del Color">
                 <TInput value={form.color} onChange={v => set("color", v)} placeholder="Ej: Rojo cereza con ribete granate" />
               </Field>
@@ -2429,13 +2475,14 @@ function WinetasticApp() {
             {modoGuiado && guiaFase !== "olfativo" && (
               <button onClick={() => setGuiaFase("olfativo")}
                 style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
-                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
-                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  borderRadius: 4, padding: "8px 14px", cursor: "pointer",
+                  fontSize: 10, color: C.burgundy, fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                Ver consejos para esta fase
               </button>
             )}
-            <Section title="Análisis Olfativo" icon="👃">
+            <Section title="Análisis olfativo">
               <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 12px", fontFamily: F.serif }}>— Copa en reposo —</p>
               {form.arp.map((a, i) => <AromaRow key={i} item={a} onChange={v => updRow("arp", i, v)} label="Aroma detectado" index={i} />)}
               {form.arp.length < 5 && <AddBtn onClick={() => addRow("arp")} label="Añadir aroma" />}
@@ -2454,13 +2501,14 @@ function WinetasticApp() {
             {modoGuiado && guiaFase !== "gustativo" && (
               <button onClick={() => setGuiaFase("gustativo")}
                 style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
-                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
-                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  borderRadius: 4, padding: "8px 14px", cursor: "pointer",
+                  fontSize: 10, color: C.burgundy, fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                Ver consejos para esta fase
               </button>
             )}
-            <Section title="Análisis Gustativo" icon="👅">
+            <Section title="Análisis gustativo">
               {form.sab.map((s, i) => <AromaRow key={i} item={s} onChange={v => updRow("sab", i, v)} label="Sabor detectado" index={i} />)}
               {form.sab.length < 5 && <AddBtn onClick={() => addRow("sab")} label="Añadir sabor" />}
               <div style={{ height: 1, background: C.border, margin: "16px 0" }} />
@@ -2489,13 +2537,14 @@ function WinetasticApp() {
             {modoGuiado && guiaFase !== "puntuacion" && (
               <button onClick={() => setGuiaFase("puntuacion")}
                 style={{ background: `${C.burgundy}10`, border: `1px solid ${C.burgundy}30`,
-                  borderRadius: 9, padding: "7px 14px", cursor: "pointer",
-                  fontSize: 11, color: C.burgundy, fontFamily: F.serif,
+                  borderRadius: 4, padding: "8px 14px", cursor: "pointer",
+                  fontSize: 10, color: C.burgundy, fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                Ver consejos para esta fase
               </button>
             )}
-            <Section title="Puntuación Final" icon="🏅">
+            <Section title="Puntuación final">
               {/* Media orientativa */}
               {(form.punt_vis > 0 || form.punt_olf > 0 || form.punt_gus > 0) && (() => {
                 const vals = [form.punt_vis, form.punt_olf, form.punt_gus].filter(v => v > 0);
@@ -2548,21 +2597,27 @@ function WinetasticApp() {
             <div style={{ display: "flex", gap: 10 }}>
             <button onClick={guardar}
                 style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                  color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
-                  fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700,
+                  color: "#FDF7F0", border: "none", borderRadius: 6, padding: "15px",
+                  fontSize: 13, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                   boxShadow: `0 4px 16px ${C.burgundy}40` }}>
-                {form.id ? "💾 Actualizar Ficha" : "🍷 Guardar Ficha"}
+                {form.id ? "Actualizar ficha" : "Guardar ficha"}
               </button>
               <button onClick={() => setForm(newForm())}
                 style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`,
-                  borderRadius: 9, padding: "15px 20px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>
+                  borderRadius: 6, padding: "15px 20px", fontSize: 12, cursor: "pointer", fontFamily: F.serif,
+                  fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
                 Limpiar
               </button>
             </div>
 
-            <p style={{ textAlign: "center", color: C.muted, marginTop: 40, fontFamily: F.script, fontSize: 15 }}>
-              ✦ Winetastic App · Tu cuaderno de catas digital ✦
-            </p>
+            <div style={{ textAlign: "center", marginTop: 48 }}>
+              <div style={{ width: 36, height: 1, background: C.gold, margin: "0 auto 12px" }} />
+              <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 10, margin: 0,
+                textTransform: "uppercase", letterSpacing: "0.22em" }}>
+                Winetastic · Tu cuaderno de catas
+              </p>
+            </div>
           </>
         )}
       </div>}
@@ -2584,10 +2639,10 @@ const AgeGate = ({ onConfirm }) => (
       border: `1px solid ${C.border}`, boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
       width: "100%", maxWidth: 360, textAlign: "center" }}>
 
-      <div style={{ fontSize: 32, marginBottom: 16 }}>🍷</div>
+      <div style={{ width: 44, height: 1, background: C.gold, margin: "0 auto 22px" }} />
 
-      <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 600,
-        color: C.text, marginBottom: 8 }}>
+      <div style={{ fontFamily: F.script, fontSize: 28, fontWeight: 500,
+        color: C.text, marginBottom: 8, letterSpacing: "-0.01em" }}>
         Bienvenido a Winetastic
       </div>
 
@@ -2604,19 +2659,21 @@ const AgeGate = ({ onConfirm }) => (
       <div style={{ display: "flex", gap: 12 }}>
         <button onClick={() => onConfirm(true)}
           style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#fff", border: "none", borderRadius: 12, padding: "14px",
-            fontFamily: F.script, fontSize: 18, fontWeight: 600, cursor: "pointer",
+            color: "#fff", border: "none", borderRadius: 6, padding: "14px",
+            fontFamily: F.serif, fontSize: 12, fontWeight: 500, cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "0.16em",
             boxShadow: `0 4px 16px ${C.burgundy}30`, transition: "transform 0.15s" }}
-          onMouseOver={e => e.currentTarget.style.transform = "scale(1.03)"}
+          onMouseOver={e => e.currentTarget.style.transform = "scale(1.02)"}
           onMouseOut={e => e.currentTarget.style.transform = "none"}>
           Sí
         </button>
         <button onClick={() => onConfirm(false)}
           style={{ flex: 1, background: C.bg, color: C.muted,
-            border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px",
-            fontFamily: F.script, fontSize: 18, fontWeight: 600, cursor: "pointer",
+            border: `1px solid ${C.border}`, borderRadius: 6, padding: "14px",
+            fontFamily: F.serif, fontSize: 12, fontWeight: 500, cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "0.16em",
             transition: "transform 0.15s" }}
-          onMouseOver={e => e.currentTarget.style.transform = "scale(1.03)"}
+          onMouseOver={e => e.currentTarget.style.transform = "scale(1.02)"}
           onMouseOut={e => e.currentTarget.style.transform = "none"}>
           No
         </button>

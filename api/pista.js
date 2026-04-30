@@ -7,17 +7,53 @@ export default async function handler(req, res) {
 
     if (tipo === "perfil") {
       const { uvas } = req.body;
-      messages = [{ role: "user", content: `Eres un sommelier experto. Para las variedades de uva: ${uvas}, describe brevemente en español:\n1. 🎨 COLORES típicos (joven vs. crianza)\n2. 👃 AROMAS primarios, secundarios y terciarios\n3. 👅 SABORES y sensaciones en boca\n4. 🍷 ESTILOS habituales\nSé conciso, usa emojis. Máximo 300 palabras.` }];
+      messages = [{ role: "user", content: `Eres un sommelier experto. Para las variedades de uva: ${uvas}, redacta en español una descripción organoléptica con cuatro apartados, separando cada uno con un encabezado en MAYÚSCULAS y una línea en blanco antes y después. Los apartados son:
+
+COLORES
+Una o dos frases describiendo los colores típicos en versión joven y en versión con crianza.
+
+AROMAS
+Aromas primarios (frutales, florales, vegetales), secundarios (de fermentación) y terciarios (de crianza), agrupados en una o dos frases por tipo.
+
+SABORES
+Sensaciones en boca, estructura, acidez, taninos y persistencia.
+
+ESTILOS
+Estilos de vino habituales con esta variedad y zonas vinícolas representativas.
+
+No uses emojis ni símbolos decorativos. Tono editorial, frases cortas. Máximo 280 palabras en total.` }];
 
     } else if (tipo === "busqueda") {
       const { nombre, anada, bodega } = req.body;
       tools = [{ type: "web_search_20250305", name: "web_search" }];
-      messages = [{ role: "user", content: `Busca información sobre el vino "${nombre}" añada ${anada}${bodega ? ` de la bodega "${bodega}"` : ""}. En español: puntuaciones de críticos (Parker, Peñín, Decanter...), descripción organoléptica y maridajes recomendados. Sé conciso.` }];
+      messages = [{ role: "user", content: `Busca información sobre el vino "${nombre}" añada ${anada}${bodega ? ` de la bodega "${bodega}"` : ""}. Redacta la respuesta en español en tres apartados claramente separados, cada uno encabezado en MAYÚSCULAS:
+
+CRÍTICA
+Puntuaciones y comentarios breves de críticos relevantes (Parker, Peñín, Decanter, Wine Spectator, Suckling).
+
+DESCRIPCIÓN ORGANOLÉPTICA
+Color, aromas, paso por boca y final.
+
+MARIDAJES
+Tres a cinco maridajes concretos.
+
+No uses emojis ni símbolos. Tono editorial, conciso.` }];
 
     } else if (tipo === "recomienda") {
       const { query } = req.body;
       tools = [{ type: "web_search_20250305", name: "web_search" }];
-      messages = [{ role: "user", content: `Eres un sommelier experto. El usuario busca: "${query}"\n\nBusca en internet y recomienda 2-3 vinos concretos en español. Para cada vino incluye:\n🍷 Nombre y bodega\n📍 Denominación de origen\n💰 Precio aproximado\n⭐ Puntuación si está disponible\n📝 Por qué encaja con lo que busca\n🛒 Dónde comprarlo (Uvinum, Bodeboca, Vinoteca...)\n\nSé concreto. Máximo 400 palabras.` }];
+      messages = [{ role: "user", content: `Eres un sommelier experto. El usuario busca: "${query}"
+
+Busca en internet y recomienda 2 o 3 vinos concretos. Para cada vino, redacta una ficha con seis líneas etiquetadas en MAYÚSCULAS al inicio de línea, en este orden exacto:
+
+NOMBRE — Nombre del vino y bodega
+ZONA — Denominación de origen y región
+PRECIO — Precio aproximado en euros
+PUNTUACIÓN — Si está disponible (Parker, Peñín, etc.)
+POR QUÉ — Por qué encaja con lo que busca el usuario, en una frase
+DÓNDE — Tiendas online que lo distribuyen (Uvinum, Bodeboca, Vinissimus, Decántalo)
+
+Separa cada vino con una línea en blanco. No uses emojis ni símbolos decorativos. Tono editorial, máximo 350 palabras en total.` }];
 
     } else if (tipo === "resumen_cata") {
       const { vino, resumen } = req.body;

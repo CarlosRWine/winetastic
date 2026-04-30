@@ -10,7 +10,7 @@
     "precio": "35€/persona",
     "plazas": 20,
     "imagen": "/eventos/evento1.jpg",
-    "activo": true
+    "activo": false
   },
   {
     "id": 2,

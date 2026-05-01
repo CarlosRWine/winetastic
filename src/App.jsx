@@ -1930,6 +1930,312 @@ const GuiaCard = ({ seccion, onContinuar }) => {
     </div>
   );
 };
+// ─── PERSISTENCIA SESIÓN ACTIVA ──────────────────────────────────────────────
+const ACTIVE_SESION_KEY = "wt_sesion_activa";
+const saveActiveSesion = (s) => { try { localStorage.setItem(ACTIVE_SESION_KEY, JSON.stringify(s)); } catch {} };
+const loadActiveSesion = () => { try { return JSON.parse(localStorage.getItem(ACTIVE_SESION_KEY) || "null"); } catch { return null; } };
+const clearActiveSesion = () => { try { localStorage.removeItem(ACTIVE_SESION_KEY); } catch {} };
+
+// ─── CREAR SESIÓN ────────────────────────────────────────────────────────────
+const CrearSesionView = ({ userId, onCreated, onVolver }) => {
+  const hoy = new Date();
+  const fechaIso = hoy.toISOString().slice(0, 10);
+  const fechaTxt = hoy.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+  const [nombre, setNombre] = useState(`Cata del ${fechaTxt}`);
+  const [fecha, setFecha] = useState(fechaIso);
+  const [modalidad, setModalidad] = useState("solo");
+  const [ciega, setCiega] = useState(false);
+  const [anfitrionCata, setAnfitrionCata] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const crear = async () => {
+    if (!nombre.trim()) { setError("Pon un nombre a la sesión"); return; }
+    setLoading(true); setError("");
+    try {
+      const r = await apiSesiones("crear", userId, {
+        sesion: { nombre: nombre.trim(), fecha, modalidad, ciega, anfitrionCata }
+      });
+      if (r.ok && r.sesion) {
+        onCreated(r.sesion);
+      } else {
+        setError(r.error || "No se pudo crear la sesión");
+      }
+    } catch (e) {
+      setError("Error de conexión: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ maxWidth: 520, margin: "0 auto" }}>
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: C.burgundy, fontWeight: 500, marginBottom: 6, fontFamily: F.serif }}>
+          Nueva sesión
+        </div>
+        <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.text, margin: "0 0 4px", letterSpacing: "-0.01em" }}>
+          Empieza tu cata
+        </h1>
+        <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: 0, fontFamily: F.serif }}>
+          Una sesión agrupa los vinos que catarás hoy
+        </p>
+      </div>
+
+      <Section title="Detalles">
+        <Field label="Nombre de la sesión">
+          <TInput value={nombre} onChange={setNombre} placeholder="Ej: Cata de aniversario" />
+        </Field>
+        <Field label="Fecha">
+          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} style={iBase} />
+        </Field>
+        <Field label="Modalidad">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {[["solo", "Solo"], ["grupal", "Grupal"]].map(([v, l]) => (
+              <button key={v} onClick={() => setModalidad(v)}
+                style={{
+                  background: modalidad === v ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : "transparent",
+                  color: modalidad === v ? "#FDF7F0" : C.muted,
+                  border: modalidad === v ? "none" : `1px solid ${C.border}`,
+                  borderRadius: 6, padding: "11px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+                  fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em",
+                }}>{l}</button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Cata a ciegas">
+          <button onClick={() => setCiega(c => !c)}
+            style={{
+              width: "100%", textAlign: "left",
+              background: ciega ? `${C.burgundy}10` : "transparent",
+              border: `1px solid ${ciega ? C.burgundy : C.border}`,
+              borderRadius: 6, padding: "10px 12px", cursor: "pointer", fontFamily: F.serif,
+              fontSize: 12, color: ciega ? C.burgundy : C.muted,
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+            <span style={{
+              width: 16, height: 16, borderRadius: 3, flexShrink: 0,
+              border: `1.5px solid ${ciega ? C.burgundy : C.border}`,
+              background: ciega ? C.burgundy : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "white", fontSize: 11, fontWeight: 500,
+            }}>{ciega ? "✓" : ""}</span>
+            <span>{ciega ? "Activada — los datos del vino se ocultarán hasta el final" : "Desactivada — verás la etiqueta durante la cata"}</span>
+          </button>
+        </Field>
+        {modalidad === "grupal" && (
+          <Field label="¿Cataré yo también?">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {[[true, "Sí, cato"], [false, "Solo gestiono"]].map(([v, l]) => (
+                <button key={String(v)} onClick={() => setAnfitrionCata(v)}
+                  style={{
+                    background: anfitrionCata === v ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : "transparent",
+                    color: anfitrionCata === v ? "#FDF7F0" : C.muted,
+                    border: anfitrionCata === v ? "none" : `1px solid ${C.border}`,
+                    borderRadius: 6, padding: "11px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+                    fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em",
+                  }}>{l}</button>
+              ))}
+            </div>
+          </Field>
+        )}
+      </Section>
+
+      {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, marginBottom: 12 }}>{error}</p>}
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={crear} disabled={loading}
+          style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "14px",
+            fontSize: 12, cursor: loading ? "wait" : "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.16em" }}>
+          {loading ? "Creando…" : "Crear y empezar"}
+        </button>
+        <button onClick={onVolver}
+          style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+            borderRadius: 6, padding: "14px 18px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── SESIÓN ACTIVA: cola de vinos ────────────────────────────────────────────
+const SesionActivaView = ({ sesion, fichas, onAddVino, onCatarVino, onFinalizar, onSalir }) => {
+  const fichasDeSesion = (sesion.fichaIds || [])
+    .map(id => fichas.find(f => f.id === id))
+    .filter(Boolean);
+
+  const total = fichasDeSesion.length;
+  const cabeceraSubtitulo = total === 0 ? "Aún no has añadido ningún vino" : (total === 1 ? "1 vino registrado" : `${total} vinos registrados`);
+
+  const Estrella = (
+    <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "currentColor", margin: "0 8px" }} />
+  );
+
+  return (
+    <div style={{ maxWidth: 600, margin: "0 auto" }}>
+      <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+        borderRadius: 14, padding: "18px 22px", marginBottom: 20, color: "#FDF7F0" }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: C.gold, fontWeight: 500, marginBottom: 6 }}>
+          Sesión en curso
+        </div>
+        <h1 style={{ fontFamily: F.script, fontSize: 28, fontWeight: 500, margin: "0 0 4px", letterSpacing: "-0.01em" }}>
+          {sesion.nombre}
+        </h1>
+        <div style={{ fontSize: 11, opacity: 0.75, fontFamily: F.serif, display: "flex", alignItems: "center" }}>
+          <span>{sesion.fecha}</span>{Estrella}
+          <span style={{ textTransform: "uppercase", letterSpacing: "0.12em" }}>{sesion.modalidad === "grupal" ? "Grupal" : "Solo"}</span>
+          {sesion.ciega && <>{Estrella}<span style={{ textTransform: "uppercase", letterSpacing: "0.12em" }}>A ciegas</span></>}
+        </div>
+        <div style={{ fontSize: 11, opacity: 0.6, fontFamily: F.serif, marginTop: 4, fontStyle: "italic" }}>
+          {cabeceraSubtitulo}
+        </div>
+      </div>
+
+      {fichasDeSesion.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          {fichasDeSesion.map((f, i) => {
+            const punt = Number(f.puntuacion) || 0;
+            return (
+              <div key={f.id} onClick={() => onCatarVino(f)}
+                style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10,
+                  padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12,
+                  transition: "border-color 0.18s" }}
+                onMouseOver={e => e.currentTarget.style.borderColor = C.gold}
+                onMouseOut={e => e.currentTarget.style.borderColor = C.border}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                  background: punt > 0 ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : "transparent",
+                  border: punt > 0 ? "none" : `1px solid ${C.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: punt > 0 ? "#FDF7F0" : C.muted, fontSize: 11, fontFamily: F.serif, fontWeight: 500 }}>
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: F.serif, fontSize: 13, fontWeight: 500, color: C.text,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {sesion.ciega ? `Vino ${i + 1}` : (f.nombre || "Sin nombre")}
+                  </div>
+                  {!sesion.ciega && (
+                    <div style={{ fontSize: 10, color: C.muted, fontFamily: F.serif, marginTop: 2,
+                      textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                      {[f.bodega, f.anada].filter(Boolean).join(" · ") || "Sin bodega"}
+                    </div>
+                  )}
+                </div>
+                {punt > 0 && (
+                  <div style={{ fontFamily: F.script, fontSize: 18, color: C.burgundy, fontWeight: 500 }}>
+                    {punt}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button onClick={onAddVino}
+        style={{ width: "100%", background: "transparent", border: `1px dashed ${C.gold}`,
+          color: C.burgundy, borderRadius: 8, padding: "14px", cursor: "pointer", fontFamily: F.serif,
+          fontWeight: 500, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.14em",
+          marginBottom: 22 }}>
+        + {fichasDeSesion.length === 0 ? "Añadir el primer vino" : "Añadir otro vino"}
+      </button>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onFinalizar} disabled={fichasDeSesion.length === 0}
+          style={{ flex: 1, background: fichasDeSesion.length === 0 ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
+            color: fichasDeSesion.length === 0 ? C.muted : "#2A1218",
+            border: "none", borderRadius: 6, padding: "13px",
+            fontSize: 12, cursor: fichasDeSesion.length === 0 ? "not-allowed" : "pointer",
+            fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          Finalizar sesión
+        </button>
+        <button onClick={onSalir}
+          style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+            borderRadius: 6, padding: "13px 18px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          Salir sin cerrar
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── RESULTADOS DE SESIÓN (placeholder hasta lote C parte 2) ─────────────────
+const ResultadosSesionView = ({ sesion, fichas, onVolver }) => {
+  const fichasDeSesion = (sesion.fichaIds || [])
+    .map(id => fichas.find(f => f.id === id))
+    .filter(Boolean)
+    .sort((a, b) => (Number(b.puntuacion) || 0) - (Number(a.puntuacion) || 0));
+
+  return (
+    <div style={{ maxWidth: 560, margin: "0 auto" }}>
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ width: 56, height: 1, background: C.gold, margin: "0 auto 22px" }} />
+        <div style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: C.burgundy, fontWeight: 500, marginBottom: 6, fontFamily: F.serif }}>
+          Sesión finalizada
+        </div>
+        <h1 style={{ fontFamily: F.script, fontSize: 32, fontWeight: 500, color: C.text, margin: "0 0 6px", letterSpacing: "-0.01em" }}>
+          {sesion.nombre}
+        </h1>
+        <p style={{ color: C.muted, fontSize: 12, fontFamily: F.serif, margin: 0,
+          textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          {sesion.fecha} · {fichasDeSesion.length} {fichasDeSesion.length === 1 ? "vino" : "vinos"}
+        </p>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+        {fichasDeSesion.map((f, i) => {
+          const punt = Number(f.puntuacion) || 0;
+          const esTop = i === 0 && punt > 0;
+          return (
+            <div key={f.id} style={{
+              background: esTop ? `${C.gold}18` : C.card,
+              border: `1px solid ${esTop ? C.gold : C.border}`,
+              borderRadius: 10, padding: "14px 16px",
+              display: "flex", alignItems: "center", gap: 14,
+            }}>
+              <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500, color: esTop ? C.gold : C.muted, minWidth: 28 }}>
+                {String(i + 1).padStart(2, "0")}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: F.serif, fontSize: 13, fontWeight: 500, color: C.text }}>
+                  {f.nombre || "Sin nombre"}
+                </div>
+                <div style={{ fontSize: 10, color: C.muted, fontFamily: F.serif, marginTop: 2,
+                  textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                  {[f.bodega, f.anada].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              {punt > 0 && (
+                <div style={{ fontFamily: F.script, fontSize: 24, fontWeight: 500, color: esTop ? C.gold : C.burgundy }}>
+                  {punt}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ background: `${C.gold}10`, border: `1px dashed ${C.gold}80`, borderRadius: 8,
+        padding: "12px 16px", marginBottom: 22, fontSize: 11, color: C.muted, fontFamily: F.serif,
+        fontStyle: "italic", textAlign: "center", lineHeight: 1.6 }}>
+        El comentario IA por vino y el resumen colectivo llegan en la próxima entrega.
+      </div>
+
+      <button onClick={onVolver}
+        style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+          color: "#FDF7F0", border: "none", borderRadius: 6, padding: "14px",
+          fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+          textTransform: "uppercase", letterSpacing: "0.16em" }}>
+        Volver al inicio
+      </button>
+    </div>
+  );
+};
+
 
 function WinetasticApp() {
   const [view, setView] = useState("home");
@@ -1958,6 +2264,9 @@ function WinetasticApp() {
   const [form, setForm] = useState(newForm());
   const [toast, setToast] = useState("");
   const [showPista, setShowPista] = useState(false);
+  // Sesión actualmente abierta (persistida en localStorage para sobrevivir
+  // a recargas a mitad de cata). null si no hay ninguna en curso.
+  const [sesionActiva, setSesionActiva] = useState(() => loadActiveSesion());
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const addRow = k => { if (form[k].length < 5) set(k, [...form[k], { text: "", int: 0 }]); };
@@ -2016,14 +2325,26 @@ function WinetasticApp() {
     if (!form.nombre.trim()) { setToast("Añade al menos el nombre del vino"); setTimeout(() => setToast(""), 3000); return; }
     const isEdit = !!form.id;
     try {
+      let fichaGuardada;
       if (isEdit) {
         await apiFichas("actualizar", userId, { fichaId: form.id, ficha: form });
+        fichaGuardada = { ...form };
         setFichas(prev => prev.map(f => f.id === form.id ? { ...form, fecha: f.fecha } : f));
       } else {
-        const fichaConFecha = { ...form, fecha: new Date().toLocaleDateString("es-ES") };
+        const fichaConSesion = sesionActiva ? { ...form, sesionId: sesionActiva.id } : { ...form };
+        const fichaConFecha = { ...fichaConSesion, fecha: new Date().toLocaleDateString("es-ES") };
         const data = await apiFichas("guardar", userId, { ficha: fichaConFecha });
-        const fichaGuardada = data?.ficha || { ...fichaConFecha, id: Date.now() };
+        fichaGuardada = data?.ficha || { ...fichaConFecha, id: Date.now() };
         setFichas(prev => [...prev, fichaGuardada]);
+        // Si estamos dentro de una sesión, registrar la ficha en su fichaIds
+        if (sesionActiva && !isEdit) {
+          const nuevosIds = [...(sesionActiva.fichaIds || []), fichaGuardada.id];
+          try {
+            await apiSesiones("actualizar", userId, { sesionId: sesionActiva.id, datos: { fichaIds: nuevosIds } });
+          } catch (e) { console.warn("No se pudo actualizar la sesión:", e); }
+          const sesionAct = { ...sesionActiva, fichaIds: nuevosIds };
+          cambiarSesion(sesionAct);
+        }
       }
       setToast(isEdit ? "Ficha actualizada" : "Ficha guardada");
       setTimeout(() => setToast(""), 3000);
@@ -2031,7 +2352,7 @@ function WinetasticApp() {
       setForm(newForm());
       setModoGuiado(null);
       setGuiaFase(null);
-      setView("fichas");
+      setView(sesionActiva && !isEdit ? "sesion_activa" : "fichas");
     } catch (e) {
       console.error("Error guardar:", e);
       setToast("Error al guardar: " + (e?.message || "Sin conexión"));
@@ -2040,6 +2361,9 @@ function WinetasticApp() {
   };
 
   const handleEdit = (ficha) => { setForm(ficha); setView("nueva"); };
+
+  // Helpers de sesión activa
+  const cambiarSesion = (s) => { setSesionActiva(s); if (s) saveActiveSesion(s); else clearActiveSesion(); };
 
   if (loadingFichas && userId) return (
     <div style={{ background: C.bg, minHeight: "100vh", display: "flex",
@@ -2113,7 +2437,7 @@ function WinetasticApp() {
             {/* ── GRID 2×2 ── */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
 
-              <button onClick={() => setView("nueva")}
+              <button onClick={() => setView(sesionActiva ? "sesion_activa" : "crear_sesion")}
                 style={{ position: "relative", border: "none", borderRadius: 14, padding: 0,
                   cursor: "pointer", overflow: "hidden", height: 140,
                   boxShadow: `0 4px 16px ${C.burgundy}30`, transition: "transform 0.15s",
@@ -2364,11 +2688,61 @@ function WinetasticApp() {
         {/* ── VISTA UNIRSE A CATA GRUPAL ── */}
         {view === "unirse_cata" && <UnirseCataView onVolver={() => setView("home")} />}
 
+        {/* ── VISTA CREAR SESIÓN ── */}
+        {view === "crear_sesion" && (
+          <CrearSesionView
+            userId={userId}
+            onCreated={(s) => { cambiarSesion(s); setView("sesion_activa"); }}
+            onVolver={() => setView("home")}
+          />
+        )}
+
+        {/* ── VISTA SESIÓN ACTIVA ── */}
+        {view === "sesion_activa" && sesionActiva && (
+          <SesionActivaView
+            sesion={sesionActiva}
+            fichas={fichas}
+            onAddVino={() => { setForm(newForm()); setModoGuiado(null); setGuiaFase(null); setView("nueva"); }}
+            onCatarVino={(ficha) => { setForm(ficha); setView("nueva"); }}
+            onFinalizar={async () => {
+              try {
+                await apiSesiones("actualizar", userId, { sesionId: sesionActiva.id, datos: { estado: "finalizada" } });
+                cambiarSesion({ ...sesionActiva, estado: "finalizada" });
+              } catch (e) { console.warn("No se pudo finalizar la sesión:", e); }
+              setView("sesion_resultados");
+            }}
+            onSalir={() => { setView("home"); }}
+          />
+        )}
+
+        {/* ── VISTA RESULTADOS DE SESIÓN ── */}
+        {view === "sesion_resultados" && sesionActiva && (
+          <ResultadosSesionView
+            sesion={sesionActiva}
+            fichas={fichas}
+            onVolver={() => { cambiarSesion(null); setView("home"); }}
+          />
+        )}
+
         {/* ── VISTA NUEVA FICHA ── */}
         {view === "nueva" && (
           <>
+            {sesionActiva && !form.id && (
+              <div style={{ marginBottom: 10, padding: "10px 14px",
+                background: `${C.gold}15`, border: `1px solid ${C.gold}50`,
+                borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 1, height: 28, background: C.gold }} />
+                <div>
+                  <div style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase",
+                    color: C.gold, fontWeight: 500, fontFamily: F.serif }}>Sesión en curso</div>
+                  <div style={{ fontFamily: F.script, fontSize: 16, color: C.text, fontWeight: 500 }}>
+                    {sesionActiva.nombre}
+                  </div>
+                </div>
+              </div>
+            )}
             <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.burgundy, margin: "0 0 4px", letterSpacing: "-0.01em" }}>
-              {form.id ? "Editando ficha" : "Nueva ficha de cata"}
+              {form.id ? "Editando ficha" : (sesionActiva ? `Vino ${(sesionActiva.fichaIds?.length || 0) + 1}` : "Nueva ficha de cata")}
             </h1>
             <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 20px" }}>
               Registra todos los detalles de tu degustación

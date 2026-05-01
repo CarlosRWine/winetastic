@@ -2046,6 +2046,17 @@ const DarkAddBtn = ({ onClick, label = "Añadir" }) => (
   </button>
 );
 
+// Paleta por fase: tarjeta de tips y de contenido de la misma fase
+// comparten gradiente para que el cambio de color marque visualmente
+// el paso a una nueva fase.
+const PHASE_COLORS = {
+  identificacion: { from: "#4A0D1A", to: "#1A0810" },
+  visual:         { from: "#8B1A2E", to: "#2C1810" },
+  olfato:         { from: "#6B4C2A", to: "#3A2814" },
+  gusto:          { from: "#2D5A1B", to: "#143009" },
+  puntuacion:     { from: "#8B7444", to: "#2C1810" },
+};
+
 // Tarjeta base de un Story
 const StoryCard = ({ children, gradientFrom = "#8B1A2E", gradientTo = "#2C1810" }) => (
   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column",
@@ -2060,8 +2071,8 @@ const StoryCard = ({ children, gradientFrom = "#8B1A2E", gradientTo = "#2C1810" 
 );
 
 // Tarjeta de consejos (primera de cada fase)
-const StoryTipsCard = ({ titulo, tips }) => (
-  <StoryCard>
+const StoryTipsCard = ({ titulo, tips, gradientFrom, gradientTo }) => (
+  <StoryCard gradientFrom={gradientFrom} gradientTo={gradientTo}>
     <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
       Antes de empezar
     </div>
@@ -2140,6 +2151,7 @@ const parseEtiquetaJson = (text) => {
 
 // Contenido de la fase Identificación (1ª tarjeta de la Story)
 const IdentificacionStoryContent = ({ form, set, addUva, updUva, tieneUvas, onAbrirPista }) => {
+  const _IdC = PHASE_COLORS.identificacion;
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState("");
   const fileRef = useRef(null);
@@ -2189,7 +2201,7 @@ const IdentificacionStoryContent = ({ form, set, addUva, updUva, tieneUvas, onAb
   };
 
   return (
-  <StoryCard gradientFrom="#4A0D1A" gradientTo="#1A0810">
+  <StoryCard gradientFrom={_IdC.from} gradientTo={_IdC.to}>
     <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
       Identificación
     </div>
@@ -2278,7 +2290,7 @@ const IdentificacionStoryContent = ({ form, set, addUva, updUva, tieneUvas, onAb
 
 // Contenido de la fase Visual
 const VisualStoryContent = ({ form, set }) => (
-  <StoryCard>
+  <StoryCard gradientFrom={PHASE_COLORS.visual.from} gradientTo={PHASE_COLORS.visual.to}>
     <StoryHeader tag="Fase 1 / 4" titulo="Análisis visual" />
     <div style={{ marginBottom: 18 }}>
       <StoryFieldLabel>Color del vino</StoryFieldLabel>
@@ -2295,7 +2307,7 @@ const VisualStoryContent = ({ form, set }) => (
 
 // Contenido de la fase Olfativa
 const OlfatoStoryContent = ({ form, set, addRow, updRow }) => (
-  <StoryCard gradientFrom="#6B4C2A" gradientTo="#3A2814">
+  <StoryCard gradientFrom={PHASE_COLORS.olfato.from} gradientTo={PHASE_COLORS.olfato.to}>
     <StoryHeader tag="Fase 2 / 4" titulo="Análisis olfativo" />
     <div style={{ marginBottom: 16 }}>
       <StoryFieldLabel>1ª nariz · sin agitar</StoryFieldLabel>
@@ -2316,7 +2328,7 @@ const OlfatoStoryContent = ({ form, set, addRow, updRow }) => (
 
 // Contenido de la fase Gustativa
 const GustoStoryContent = ({ form, set, addRow, updRow }) => (
-  <StoryCard gradientFrom="#2D5A1B" gradientTo="#143009">
+  <StoryCard gradientFrom={PHASE_COLORS.gusto.from} gradientTo={PHASE_COLORS.gusto.to}>
     <StoryHeader tag="Fase 3 / 4" titulo="Análisis gustativo" />
     <div style={{ marginBottom: 16 }}>
       <StoryFieldLabel>Sabores detectados</StoryFieldLabel>
@@ -2354,7 +2366,7 @@ const PuntuacionStoryContent = ({ form, set }) => {
   const vals = [form.punt_vis, form.punt_olf, form.punt_gus].filter(v => v > 0);
   const media = vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 20) : null;
   return (
-    <StoryCard gradientFrom="#4A0D1A" gradientTo="#2C1810">
+    <StoryCard gradientFrom={PHASE_COLORS.puntuacion.from} gradientTo={PHASE_COLORS.puntuacion.to}>
       <StoryHeader tag="Fase 4 / 4" titulo="Puntuación final" />
       {media !== null && (
         <div style={{ marginBottom: 22, padding: "12px 16px",
@@ -2403,14 +2415,14 @@ const PuntuacionStoryContent = ({ form, set }) => {
 const StoriesOverlay = ({ form, set, addRow, updRow, addUva, updUva, tieneUvas, onAbrirPista, onClose, onAnadirVino, onFinalizarCata, vinoNum, vinosTotal }) => {
   // 9 cards: identificación + tips + contenido por cada una de las 4 fases
   const cards = [
-    { type: "identificacion" },
-    { type: "tips", titulo: "Análisis visual",   tips: GUIA_CATA.visual.pasos },
+    { type: "identificacion", phase: "identificacion" },
+    { type: "tips",    phase: "visual",     titulo: "Análisis visual",   tips: GUIA_CATA.visual.pasos },
     { type: "content", phase: "visual" },
-    { type: "tips", titulo: "Análisis olfativo", tips: GUIA_CATA.olfativo.pasos },
+    { type: "tips",    phase: "olfato",     titulo: "Análisis olfativo", tips: GUIA_CATA.olfativo.pasos },
     { type: "content", phase: "olfato" },
-    { type: "tips", titulo: "Análisis gustativo", tips: GUIA_CATA.gustativo.pasos },
+    { type: "tips",    phase: "gusto",      titulo: "Análisis gustativo", tips: GUIA_CATA.gustativo.pasos },
     { type: "content", phase: "gusto" },
-    { type: "tips", titulo: "Puntuación final",   tips: GUIA_CATA.puntuacion.pasos },
+    { type: "tips",    phase: "puntuacion", titulo: "Puntuación final",   tips: GUIA_CATA.puntuacion.pasos },
     { type: "content", phase: "puntuacion" },
   ];
   const [idx, setIdx] = useState(0);
@@ -2469,12 +2481,16 @@ const StoriesOverlay = ({ form, set, addRow, updRow, addUva, updUva, tieneUvas, 
       <div style={{ position: "relative", flex: 1, marginTop: 8, overflow: "hidden" }}>
         <div key={idx} style={{ position: "absolute", inset: 0,
           animation: `wt-slide-in-${dir > 0 ? "right" : "left"} 0.35s cubic-bezier(0.22, 0.61, 0.36, 1)` }}>
-          {card.type === "identificacion" && <IdentificacionStoryContent form={form} set={set} addUva={addUva} updUva={updUva} tieneUvas={tieneUvas} onAbrirPista={onAbrirPista} />}
-          {card.type === "tips" && <StoryTipsCard titulo={card.titulo} tips={card.tips} />}
-          {card.type === "content" && card.phase === "visual" && <VisualStoryContent form={form} set={set} />}
-          {card.type === "content" && card.phase === "olfato" && <OlfatoStoryContent form={form} set={set} addRow={addRow} updRow={updRow} />}
-          {card.type === "content" && card.phase === "gusto"  && <GustoStoryContent  form={form} set={set} addRow={addRow} updRow={updRow} />}
-          {card.type === "content" && card.phase === "puntuacion" && <PuntuacionStoryContent form={form} set={set} />}
+          {(() => {
+            const c = PHASE_COLORS[card.phase] || PHASE_COLORS.visual;
+            if (card.type === "identificacion") return <IdentificacionStoryContent form={form} set={set} addUva={addUva} updUva={updUva} tieneUvas={tieneUvas} onAbrirPista={onAbrirPista} />;
+            if (card.type === "tips") return <StoryTipsCard titulo={card.titulo} tips={card.tips} gradientFrom={c.from} gradientTo={c.to} />;
+            if (card.type === "content" && card.phase === "visual")     return <VisualStoryContent form={form} set={set} />;
+            if (card.type === "content" && card.phase === "olfato")     return <OlfatoStoryContent form={form} set={set} addRow={addRow} updRow={updRow} />;
+            if (card.type === "content" && card.phase === "gusto")      return <GustoStoryContent  form={form} set={set} addRow={addRow} updRow={updRow} />;
+            if (card.type === "content" && card.phase === "puntuacion") return <PuntuacionStoryContent form={form} set={set} />;
+            return null;
+          })()}
         </div>
       </div>
 
@@ -2637,6 +2653,77 @@ const CataResumenView = ({ cata, onGuardar, onAnadirVino, onVolver, onCancelar, 
 };
 
 
+// ─── INICIAR CATA: pantalla de bienvenida con nombre ─────────────────────────
+const IniciarCataView = ({ cataActiva, onEmpezar, onContinuar, onVolver }) => {
+  const hoy = new Date();
+  const fechaTxt = hoy.toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+  const [nombre, setNombre] = useState((cataActiva && cataActiva.nombre) || `Cata del ${fechaTxt}`);
+  const haySesionPrevia = cataActiva && cataActiva.vinos && cataActiva.vinos.length > 0;
+
+  return (
+    <div style={{ maxWidth: 520, margin: "0 auto" }}>
+      <div style={{ marginBottom: 26 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: C.burgundy, fontWeight: 500, marginBottom: 6, fontFamily: F.serif }}>
+          Nueva cata
+        </div>
+        <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.text, margin: "0 0 6px", letterSpacing: "-0.01em" }}>
+          Empieza tu cata
+        </h1>
+        <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: 0, fontFamily: F.serif }}>
+          Pon nombre a la cata. Después podrás añadir un vino o varios.
+        </p>
+      </div>
+
+      {haySesionPrevia && (
+        <div style={{ background: `${C.gold}15`, border: `1px solid ${C.gold}50`,
+          borderRadius: 10, padding: "14px 18px", marginBottom: 20,
+          display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 1, height: 36, background: C.gold }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+              color: C.gold, fontWeight: 500, fontFamily: F.serif, marginBottom: 3 }}>
+              Cata en curso
+            </div>
+            <div style={{ fontFamily: F.script, fontSize: 18, fontWeight: 500, color: C.text, lineHeight: 1.2 }}>
+              {cataActiva.nombre} · {cataActiva.vinos.length} {cataActiva.vinos.length === 1 ? "vino" : "vinos"}
+            </div>
+          </div>
+          <button onClick={onContinuar}
+            style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+              color: "#FDF7F0", border: "none", borderRadius: 6, padding: "10px 14px",
+              fontSize: 11, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+              textTransform: "uppercase", letterSpacing: "0.14em", whiteSpace: "nowrap" }}>
+            Continuar
+          </button>
+        </div>
+      )}
+
+      <Section title="Nombre de la cata">
+        <TInput value={nombre} onChange={setNombre} placeholder={`Cata del ${fechaTxt}`} />
+        <p style={{ fontSize: 11, color: C.muted, fontStyle: "italic", margin: "8px 0 0", fontFamily: F.serif }}>
+          Sirve para localizar la cata más adelante en tu archivo. Puedes editarlo al final si quieres.
+        </p>
+      </Section>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => onEmpezar(nombre.trim() || `Cata del ${fechaTxt}`)}
+          style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "14px",
+            fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.16em" }}>
+          {haySesionPrevia ? "Empezar nueva" : "Empezar cata"}
+        </button>
+        <button onClick={onVolver}
+          style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+            borderRadius: 6, padding: "14px 18px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function WinetasticApp() {
   const [view, setView] = useState("home");
 
@@ -2670,27 +2757,21 @@ function WinetasticApp() {
   const [cataActiva, setCataActiva] = useState(() => loadCataActiva());
   const [savingMulti, setSavingMulti] = useState(false);
 
-  // Al entrar en la vista "nueva", el modo Stories se abre automáticamente.
-  // Si no hay cata activa, se inicia una nueva con nombre por defecto.
+  // Al entrar en la vista "nueva" se abre el modo Stories automáticamente.
+  // El estado cataActiva se inicializa en IniciarCataView (vista previa al
+  // entrar a Stories), no aquí — para que el usuario haya elegido el nombre
+  // antes de empezar. Si no hay cata activa al llegar aquí, redirigimos.
   useEffect(() => {
     if (view === "nueva") {
-      setStoriesOpen(true);
       if (!cataActiva) {
-        const hoy = new Date();
-        const nombreDefault = `Cata del ${hoy.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}`;
-        const nueva = {
-          nombre: nombreDefault,
-          fecha: hoy.toLocaleDateString("es-ES"),
-          fechaIso: hoy.toISOString().slice(0, 10),
-          vinos: [],
-        };
-        setCataActiva(nueva);
-        saveCataActiva(nueva);
+        setView("iniciar_cata");
+        return;
       }
+      setStoriesOpen(true);
     } else {
       setStoriesOpen(false);
     }
-  }, [view]);
+  }, [view, cataActiva]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const addRow = k => { if (form[k].length < 5) set(k, [...form[k], { text: "", int: 0 }]); };
@@ -2890,7 +2971,7 @@ function WinetasticApp() {
             {/* ── GRID 2×2 ── */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
 
-              <button onClick={() => setView("nueva")}
+              <button onClick={() => setView("iniciar_cata")}
                 style={{ position: "relative", border: "none", borderRadius: 14, padding: 0,
                   cursor: "pointer", overflow: "hidden", height: 140,
                   boxShadow: `0 4px 16px ${C.burgundy}30`, transition: "transform 0.15s",
@@ -3187,6 +3268,30 @@ function WinetasticApp() {
 
         {/* ── VISTA UNIRSE A CATA GRUPAL ── */}
         {view === "unirse_cata" && <UnirseCataView onVolver={() => setView("home")} />}
+
+        {/* ── VISTA INICIAR CATA ── */}
+        {view === "iniciar_cata" && (
+          <IniciarCataView
+            cataActiva={cataActiva}
+            onEmpezar={(nombre) => {
+              const hoy = new Date();
+              const nueva = {
+                nombre,
+                fecha: hoy.toLocaleDateString("es-ES"),
+                fechaIso: hoy.toISOString().slice(0, 10),
+                vinos: [],
+              };
+              setCataActiva(nueva);
+              saveCataActiva(nueva);
+              setForm(newForm());
+              setModoGuiado(null);
+              setGuiaFase(null);
+              setView("nueva");
+            }}
+            onContinuar={() => { setForm(newForm()); setView("nueva"); }}
+            onVolver={() => setView("home")}
+          />
+        )}
 
         {/* ── VISTA CATA RESUMEN ── */}
         {view === "cata_resumen" && cataActiva && (

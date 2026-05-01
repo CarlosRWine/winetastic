@@ -1988,7 +1988,7 @@ const StoryTipsCard = ({ titulo, tips }) => (
     <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
       Antes de empezar
     </div>
-    <div style={{ fontFamily: F.script, fontSize: 32, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 24 }}>
+    <div style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 26 }}>
       {titulo}
     </div>
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1997,7 +1997,7 @@ const StoryTipsCard = ({ titulo, tips }) => (
           <div style={{ fontSize: 11, color: "#D4B98A", fontWeight: 500, minWidth: 20, fontFamily: F.serif }}>
             {String(i + 1).padStart(2, "0")}
           </div>
-          <div style={{ fontSize: 13, opacity: 0.92, lineHeight: 1.55, fontFamily: F.serif }}>
+          <div style={{ fontSize: 14, opacity: 0.92, lineHeight: 1.55, fontFamily: F.serif }}>
             {t}
           </div>
         </div>
@@ -2012,7 +2012,7 @@ const StoryHeader = ({ tag, titulo }) => (
     <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
       {tag}
     </div>
-    <div style={{ fontFamily: F.script, fontSize: 28, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 22 }}>
+    <div style={{ fontFamily: F.script, fontSize: 30, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 22 }}>
       {titulo}
     </div>
   </>
@@ -2023,6 +2023,68 @@ const StoryFieldLabel = ({ children }) => (
     color: "rgba(255,255,255,0.55)", fontWeight: 500, marginBottom: 8, fontFamily: F.serif }}>
     {children}
   </div>
+);
+
+// Contenido de la fase Identificación (1ª tarjeta de la Story)
+const IdentificacionStoryContent = ({ form, set, addUva, updUva, tieneUvas, onAbrirPista }) => (
+  <StoryCard gradientFrom="#4A0D1A" gradientTo="#1A0810">
+    <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
+      Identificación
+    </div>
+    <div style={{ fontFamily: F.script, fontSize: 30, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 18 }}>
+      Tu vino
+    </div>
+    <div style={{ marginBottom: 12 }}>
+      <StoryFieldLabel>Nombre del vino</StoryFieldLabel>
+      <DarkInput value={form.nombre} onChange={v => set("nombre", v)} placeholder="Ej: Vega Sicilia Único" />
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+      <div>
+        <StoryFieldLabel>Añada</StoryFieldLabel>
+        <DarkInput value={form.anada} onChange={v => set("anada", v)} placeholder="2019" type="number" />
+      </div>
+      <div>
+        <StoryFieldLabel>Precio €</StoryFieldLabel>
+        <DarkInput value={form.precio} onChange={v => set("precio", v)} placeholder="25" type="number" />
+      </div>
+    </div>
+    <div style={{ marginBottom: 12 }}>
+      <StoryFieldLabel>Bodega</StoryFieldLabel>
+      <DarkInput value={form.bodega} onChange={v => set("bodega", v)} placeholder="Ej: Bodegas Muga" />
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+      <div>
+        <StoryFieldLabel>Zona</StoryFieldLabel>
+        <DarkInput value={form.zona} onChange={v => set("zona", v)} placeholder="Ribera del Duero" />
+      </div>
+      <div>
+        <StoryFieldLabel>D.O. / Clasificación</StoryFieldLabel>
+        <DarkInput value={form.do_cl} onChange={v => set("do_cl", v)} placeholder="D.O. Rioja" />
+      </div>
+    </div>
+    <StoryFieldLabel>Variedades de uva</StoryFieldLabel>
+    {form.uvas.map((u, i) => (
+      <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div style={{ flex: 2 }}>
+          <DarkInput value={u.v} onChange={v => updUva(i, "v", v)} placeholder={`Variedad ${i + 1}`} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <DarkInput value={u.p} onChange={v => updUva(i, "p", v)} placeholder="%" type="number" />
+        </div>
+      </div>
+    ))}
+    {form.uvas.length < 5 && <DarkAddBtn onClick={addUva} label="Añadir variedad" />}
+    <div style={{ height: 1, background: "rgba(255,255,255,0.12)", margin: "18px 0 14px" }} />
+    <button onClick={onAbrirPista} disabled={!tieneUvas}
+      style={{ width: "100%",
+        background: tieneUvas ? "linear-gradient(135deg, #D4B98A, #8B7444)" : "rgba(255,255,255,0.06)",
+        color: tieneUvas ? "#1a0b0e" : "rgba(255,255,255,0.4)",
+        border: "none", borderRadius: 6, padding: "11px 16px",
+        fontSize: 11, cursor: tieneUvas ? "pointer" : "not-allowed",
+        fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.16em" }}>
+      Dame una pista
+    </button>
+  </StoryCard>
 );
 
 // Contenido de la fase Visual
@@ -2149,9 +2211,10 @@ const PuntuacionStoryContent = ({ form, set }) => {
 };
 
 // ─── STORIES OVERLAY: contenedor principal ───────────────────────────────────
-const StoriesOverlay = ({ form, set, addRow, updRow, onClose, onGuardar }) => {
-  // 8 cards: tips + contenido por cada una de las 4 fases sensoriales
+const StoriesOverlay = ({ form, set, addRow, updRow, addUva, updUva, tieneUvas, onAbrirPista, onClose, onGuardar }) => {
+  // 9 cards: identificación + tips + contenido por cada una de las 4 fases
   const cards = [
+    { type: "identificacion" },
     { type: "tips", titulo: "Análisis visual",   tips: GUIA_CATA.visual.pasos },
     { type: "content", phase: "visual" },
     { type: "tips", titulo: "Análisis olfativo", tips: GUIA_CATA.olfativo.pasos },
@@ -2162,21 +2225,28 @@ const StoriesOverlay = ({ form, set, addRow, updRow, onClose, onGuardar }) => {
     { type: "content", phase: "puntuacion" },
   ];
   const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState(1); // 1 forward, -1 back
   const total = cards.length;
   const card = cards[idx];
   const esUltima = idx === total - 1;
 
-  const next = () => setIdx(i => Math.min(i + 1, total - 1));
-  const prev = () => setIdx(i => Math.max(i - 1, 0));
+  const next = () => { setDir(1); setIdx(i => Math.min(i + 1, total - 1)); };
+  const prev = () => { setDir(-1); setIdx(i => Math.max(i - 1, 0)); };
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 2000, background: "#1a0b0e",
       display: "flex", flexDirection: "column", overflow: "hidden",
     }}>
-      {/* Barra de progreso superior tipo Stories */}
-      <div style={{ position: "relative", padding: "12px 16px 0",
-        display: "flex", gap: 4, zIndex: 2 }}>
+      <style>{`
+        @keyframes wt-slide-in-right { from { transform: translateX(36px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes wt-slide-in-left  { from { transform: translateX(-36px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+      `}</style>
+
+      {/* Barra de progreso superior tipo Stories — con safe-area-inset para iOS */}
+      <div style={{ position: "relative", zIndex: 2,
+        padding: "calc(env(safe-area-inset-top, 0px) + 14px) 16px 0",
+        display: "flex", gap: 4 }}>
         {cards.map((_, i) => (
           <div key={i} style={{
             flex: 1, height: 2, borderRadius: 1,
@@ -2185,8 +2255,9 @@ const StoriesOverlay = ({ form, set, addRow, updRow, onClose, onGuardar }) => {
         ))}
       </div>
 
-      {/* Botón cerrar */}
-      <div style={{ position: "absolute", top: 22, right: 16, zIndex: 3 }}>
+      {/* Botón cerrar — con safe-area-inset para iOS */}
+      <div style={{ position: "absolute", right: 16, zIndex: 3,
+        top: "calc(env(safe-area-inset-top, 0px) + 22px)" }}>
         <button onClick={onClose}
           style={{ background: "rgba(255,255,255,0.12)", border: "none",
             color: "white", borderRadius: "50%", width: 32, height: 32, cursor: "pointer",
@@ -2195,13 +2266,17 @@ const StoriesOverlay = ({ form, set, addRow, updRow, onClose, onGuardar }) => {
         </button>
       </div>
 
-      {/* Contenido principal */}
-      <div style={{ position: "relative", flex: 1, marginTop: 8 }}>
-        {card.type === "tips" && <StoryTipsCard titulo={card.titulo} tips={card.tips} />}
-        {card.type === "content" && card.phase === "visual" && <VisualStoryContent form={form} set={set} />}
-        {card.type === "content" && card.phase === "olfato" && <OlfatoStoryContent form={form} set={set} addRow={addRow} updRow={updRow} />}
-        {card.type === "content" && card.phase === "gusto"  && <GustoStoryContent  form={form} set={set} addRow={addRow} updRow={updRow} />}
-        {card.type === "content" && card.phase === "puntuacion" && <PuntuacionStoryContent form={form} set={set} />}
+      {/* Contenido principal con animación slide */}
+      <div style={{ position: "relative", flex: 1, marginTop: 8, overflow: "hidden" }}>
+        <div key={idx} style={{ position: "absolute", inset: 0,
+          animation: `wt-slide-in-${dir > 0 ? "right" : "left"} 0.35s cubic-bezier(0.22, 0.61, 0.36, 1)` }}>
+          {card.type === "identificacion" && <IdentificacionStoryContent form={form} set={set} addUva={addUva} updUva={updUva} tieneUvas={tieneUvas} onAbrirPista={onAbrirPista} />}
+          {card.type === "tips" && <StoryTipsCard titulo={card.titulo} tips={card.tips} />}
+          {card.type === "content" && card.phase === "visual" && <VisualStoryContent form={form} set={set} />}
+          {card.type === "content" && card.phase === "olfato" && <OlfatoStoryContent form={form} set={set} addRow={addRow} updRow={updRow} />}
+          {card.type === "content" && card.phase === "gusto"  && <GustoStoryContent  form={form} set={set} addRow={addRow} updRow={updRow} />}
+          {card.type === "content" && card.phase === "puntuacion" && <PuntuacionStoryContent form={form} set={set} />}
+        </div>
       </div>
 
       {/* Footer con navegación */}
@@ -2267,6 +2342,13 @@ function WinetasticApp() {
   const [toast, setToast] = useState("");
   const [showPista, setShowPista] = useState(false);
   const [storiesOpen, setStoriesOpen] = useState(false);
+
+  // Al entrar en la vista "nueva", el modo Stories se abre automáticamente.
+  // El usuario que pulse la X volverá a home (con onClose en el overlay).
+  useEffect(() => {
+    if (view === "nueva") setStoriesOpen(true);
+    else setStoriesOpen(false);
+  }, [view]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const addRow = k => { if (form[k].length < 5) set(k, [...form[k], { text: "", int: 0 }]); };
@@ -2356,7 +2438,8 @@ function WinetasticApp() {
           {/* ── TOP NAV — solo logo en home ── */}
           <div style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 20px", position: "sticky", top: 0, zIndex: 100 }}>
+            padding: "calc(env(safe-area-inset-top, 0px) + 12px) 20px 12px",
+            position: "sticky", top: 0, zIndex: 100 }}>
             <img src={LOGO} alt="Winetastic" style={{ height: 30 }} />
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>
@@ -2604,6 +2687,7 @@ function WinetasticApp() {
       {!["home","crear_cata","unirse_cata"].includes(view) && (
         <nav style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
           display: "flex", position: "sticky", top: 0, zIndex: 100,
+          paddingTop: "env(safe-area-inset-top, 0px)",
           boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
           <button onClick={() => setView("home")}
             style={{ padding: "14px 16px", border: "none", cursor: "pointer",
@@ -2646,7 +2730,11 @@ function WinetasticApp() {
           set={set}
           addRow={addRow}
           updRow={updRow}
-          onClose={() => setStoriesOpen(false)}
+          addUva={addUva}
+          updUva={updUva}
+          tieneUvas={tieneUvas}
+          onAbrirPista={() => setShowPista(true)}
+          onClose={() => { setStoriesOpen(false); setForm(newForm()); setModoGuiado(null); setGuiaFase(null); setView("home"); }}
           onGuardar={() => { setStoriesOpen(false); guardar(); }}
         />
       )}

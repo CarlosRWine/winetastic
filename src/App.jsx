@@ -61,20 +61,6 @@ const apiFichas = async (accion, userId, extra = {}) => {
   return r.json();
 };
 
-// ─── API SESIONES ───────────────────────────────────────────────────────────
-// Una sesión agrupa una o varias fichas bajo un mismo evento de cata.
-// En este lote la API queda preparada y se ejecuta una migración silenciosa
-// que asigna a cada ficha existente una sesión implícita de un solo vino.
-// La UI todavía no expone sesiones — eso llega en lotes posteriores.
-const apiSesiones = async (accion, userId, extra = {}) => {
-  const r = await fetch("/api/sesiones", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accion, userId, ...extra }),
-  });
-  return r.json();
-};
-
 // Guardar en localStorage como backup siempre
 const saveLocal = (fichas) => {
   try { localStorage.setItem(LS_CLOUD_KEY, JSON.stringify(fichas)); } catch {}
@@ -598,22 +584,14 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
   const [sort, setSort] = useState("fecha");
   const [detalle, setDetalle] = useState(null);
 
-  // Extrae el timestamp numérico desde el inicio del id (sirve tanto para
-  // ids antiguos numéricos como para los nuevos `${Date.now()}_${random}`).
-  const tsOf = (id) => {
-    if (typeof id === "number") return id;
-    const m = String(id ?? "").match(/^(\d+)/);
-    return m ? parseInt(m[1], 10) : 0;
-  };
-
   const filtered = fichas
     .filter(f => f.nombre.toLowerCase().includes(search.toLowerCase()) ||
       (f.bodega || "").toLowerCase().includes(search.toLowerCase()) ||
       (f.zona || "").toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      if (sort === "fecha") return tsOf(b.id) - tsOf(a.id);
-      if (sort === "puntuacion") return (Number(b.puntuacion) || 0) - (Number(a.puntuacion) || 0);
-      if (sort === "anada") return (Number(b.anada) || 0) - (Number(a.anada) || 0);
+      if (sort === "fecha") return b.id - a.id;
+      if (sort === "puntuacion") return b.puntuacion - a.puntuacion;
+      if (sort === "anada") return b.anada - a.anada;
       return 0;
     });
 
@@ -696,7 +674,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
             color: "#FDF7F0", fontFamily: F.script, fontWeight: 700,
             boxShadow: `0 4px 16px ${C.burgundy}40` }}>
             <span style={{ fontSize: 26, lineHeight: 1 }}>{detalle.puntuacion !== "" && detalle.puntuacion !== undefined ? detalle.puntuacion : "—"}</span>
-            <span style={{ fontSize: 11, opacity: 0.8, fontFamily: F.script }}>/100</span>
+            <span style={{ fontSize: 11, opacity: 0.8, fontFamily: "'EB Garamond', serif" }}>/100</span>
           </div>
           {detalle.notas && <p style={{ flex: 1, fontSize: 14, fontFamily: F.serif, fontStyle: "italic", color: C.muted, margin: 0 }}>{detalle.notas}</p>}
         </div>
@@ -766,7 +744,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
                 color: "#FDF7F0", fontFamily: F.script, fontWeight: 700, flexShrink: 0,
                 boxShadow: `0 2px 8px ${C.burgundy}40` }}>
                 <span style={{ fontSize: f.puntuacion > 99 ? 15 : 18, lineHeight: 1 }}>{f.puntuacion !== "" && f.puntuacion !== undefined ? f.puntuacion : "—"}</span>
-                {(f.puntuacion !== "" && f.puntuacion !== undefined) && <span style={{ fontSize: 8, opacity: 0.8, fontFamily: F.script }}>/100</span>}
+                {(f.puntuacion !== "" && f.puntuacion !== undefined) && <span style={{ fontSize: 8, opacity: 0.8, fontFamily: "'EB Garamond', serif" }}>/100</span>}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: F.script, fontSize: 18, color: C.burgundy, fontWeight: 700,
@@ -788,12 +766,11 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
               </div>
               <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, flexShrink: 0, textAlign: "right" }}>
                 <div>{f.fecha}</div>
-                <div style={{ marginTop: 4, fontSize: 9, fontFamily: F.serif, fontWeight: 500,
-                  textTransform: "uppercase", letterSpacing: "0.16em", color:
-                  f.puntuacion >= 90 ? "#C9A060" : f.puntuacion >= 75 ? "#722838" :
+                <div style={{ marginTop: 4, fontSize: 10, fontFamily: F.serif, color: 
+                  f.puntuacion >= 90 ? "#C9A060" : f.puntuacion >= 75 ? "#722838" : 
                   f.puntuacion >= 60 ? C.muted : f.puntuacion >= 40 ? "#999" : "#ccc" }}>
-                  {f.puntuacion >= 90 ? "Excepcional" : f.puntuacion >= 75 ? "Muy bueno" :
-                   f.puntuacion >= 60 ? "Bueno" : f.puntuacion >= 40 ? "Correcto" :
+                  {f.puntuacion >= 90 ? "⭐ Excepcional" : f.puntuacion >= 75 ? "Muy bueno" : 
+                   f.puntuacion >= 60 ? "Bueno" : f.puntuacion >= 40 ? "Correcto" : 
                    f.puntuacion > 0 ? "Deficiente" : ""}
                 </div>
               </div>
@@ -1668,22 +1645,7 @@ const EventosView = () => {
   useEffect(() => {
     fetch("/eventos.json")
       .then(r => r.json())
-      .then(data => {
-        // Solo mostrar eventos cuya fecha sea hoy o futura. La fecha viene en
-        // formato ISO (YYYY-MM-DD) en el JSON; comparamos contra la fecha
-        // local del usuario a las 00:00 para no descartar el día en curso.
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-        const futuros = (Array.isArray(data) ? data : [])
-          .filter(ev => {
-            if (!ev?.fecha) return true; // si no hay fecha, no filtramos
-            const f = new Date(ev.fecha);
-            return !isNaN(f) && f >= hoy;
-          })
-          .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-        setEventos(futuros);
-        setLoading(false);
-      })
+      .then(data => { setEventos(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
@@ -1979,21 +1941,7 @@ function WinetasticApp() {
           setMigrada(true);
         }
         const data = await apiFichas("listar", userId);
-        let cloud = Array.isArray(data?.fichas) ? data.fichas : null;
-
-        // Migración silenciosa a sesiones: si alguna ficha no tiene sesionId,
-        // pedimos al endpoint que cree sesiones implícitas y volvemos a leer
-        // las fichas para recibir los nuevos sesionId. Es idempotente.
-        if (cloud && cloud.some(f => !f.sesionId)) {
-          try {
-            await apiSesiones("migrar", userId);
-            const reload = await apiFichas("listar", userId);
-            if (Array.isArray(reload?.fichas)) cloud = reload.fichas;
-          } catch (e) {
-            console.warn("Migración de sesiones falló (no bloqueante):", e);
-          }
-        }
-
+        const cloud = Array.isArray(data?.fichas) ? data.fichas : null;
         if (cloud !== null) {
           setFichas(cloud);
           saveLocal(cloud); // keep local in sync

@@ -37,6 +37,31 @@ Datos de la cata grupal (${resumen.total} participantes):
 
 Redacta una nota de cata de 3-4 frases que sintetice las percepciones del grupo de forma elegante y profesional, como si fuera la descripción oficial del vino basada en opiniones de consumidores reales. Termina con una frase de valoración global.` }];
 
+    } else if (tipo === "etiqueta") {
+      const { imagen } = req.body;
+      // imagen viene como data URL: "data:image/jpeg;base64,...."
+      const m = imagen && imagen.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+      if (!m) return res.status(400).json({ error: "Imagen no válida" });
+      const mediaType = m[1];
+      const data = m[2];
+
+      messages = [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data } },
+          { type: "text", text: `Examina esta etiqueta de vino y extrae sus datos. Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional ni markdown ni explicaciones, con esta estructura exacta:
+
+{"nombre":"...","bodega":"...","anada":"...","zona":"...","do_cl":"...","uvas":[{"v":"...","p":"..."}]}
+
+Reglas:
+- Si un campo no es legible o no aparece en la etiqueta, déjalo como cadena vacía "".
+- "anada" debe ser solo el año (4 dígitos).
+- "uvas" es un array que puede estar vacío [].
+- Cada uva tiene "v" (variedad) y "p" (porcentaje sin el símbolo %).
+- No inventes información que no se vea claramente en la imagen.` }
+        ]
+      }];
+
     } else {
       return res.status(400).json({ error: "Tipo no reconocido." });
     }

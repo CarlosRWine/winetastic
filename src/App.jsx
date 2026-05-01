@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk } from "@clerk/clerk-react";
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -2025,15 +2025,126 @@ const StoryFieldLabel = ({ children }) => (
   </div>
 );
 
+// Reduce y comprime una imagen capturada antes de enviarla al backend.
+// Devuelve una data URL JPEG (base64) limitada a maxDim px en su lado mayor.
+const compressImage = (file, maxDim = 1280, quality = 0.85) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) { h = Math.round(h * (maxDim / w)); w = maxDim; }
+        else        { w = Math.round(w * (maxDim / h)); h = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      try { resolve(canvas.toDataURL("image/jpeg", quality)); }
+      catch (err) { reject(err); }
+    };
+    img.onerror = reject;
+    img.src = e.target.result;
+  };
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+
+// Limpia la respuesta del LLM: extrae el primer objeto JSON que encuentre,
+// tolerando texto previo, bloques ```json ... ```, etc.
+const parseEtiquetaJson = (text) => {
+  if (!text) return null;
+  const m = String(text).match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch { return null; }
+};
+
 // Contenido de la fase Identificación (1ª tarjeta de la Story)
-const IdentificacionStoryContent = ({ form, set, addUva, updUva, tieneUvas, onAbrirPista }) => (
+const IdentificacionStoryContent = ({ form, set, addUva, updUva, tieneUvas, onAbrirPista }) => {
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState("");
+  const fileRef = useRef(null);
+
+  const onPickFile = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    handleScan(file);
+    e.target.value = ""; // permitir re-subir la misma foto
+  };
+
+  const handleScan = async (file) => {
+    setScanning(true);
+    setScanError("");
+    try {
+      const base64 = await compressImage(file);
+      const r = await fetch("/api/pista", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "etiqueta", imagen: base64 }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.text) throw new Error(data.error || "Sin respuesta");
+      const ext = parseEtiquetaJson(data.text);
+      if (!ext) throw new Error("No se pudo leer la etiqueta");
+
+      // Volcar campos detectados, sin pisar lo que el usuario ya haya escrito.
+      const setIfEmpty = (k, v) => { if (typeof v === "string" && v.trim() && !form[k]) set(k, v.trim()); };
+      setIfEmpty("nombre", ext.nombre);
+      setIfEmpty("bodega", ext.bodega);
+      setIfEmpty("anada",  ext.anada);
+      setIfEmpty("zona",   ext.zona);
+      setIfEmpty("do_cl",  ext.do_cl);
+      // Uvas: solo si el formulario no tiene aún ninguna variedad escrita.
+      if (Array.isArray(ext.uvas) && ext.uvas.length > 0 && !form.uvas.some(u => u.v && u.v.trim())) {
+        const limpias = ext.uvas
+          .filter(u => u && typeof u.v === "string" && u.v.trim())
+          .slice(0, 5)
+          .map(u => ({ v: String(u.v).trim(), p: String(u.p || "").replace(/[^0-9.]/g, "") }));
+        if (limpias.length > 0) set("uvas", limpias.length < 5 ? [...limpias, { v: "", p: "" }] : limpias);
+      }
+    } catch (err) {
+      console.warn("Etiqueta scan falló:", err);
+      setScanError("No se pudo leer la etiqueta. Intenta otra foto o rellena a mano.");
+    }
+    setScanning(false);
+  };
+
+  return (
   <StoryCard gradientFrom="#4A0D1A" gradientTo="#1A0810">
     <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
       Identificación
     </div>
-    <div style={{ fontFamily: F.script, fontSize: 30, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 18 }}>
+    <div style={{ fontFamily: F.script, fontSize: 30, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 14 }}>
       Tu vino
     </div>
+
+    {/* Botón de escaneo de etiqueta */}
+    <input ref={fileRef} type="file" accept="image/*" capture="environment"
+      onChange={onPickFile} style={{ display: "none" }} />
+    <button onClick={() => fileRef.current && fileRef.current.click()} disabled={scanning}
+      style={{ width: "100%", marginBottom: 8,
+        background: scanning ? "rgba(212,185,138,0.15)" : "linear-gradient(135deg, #D4B98A, #8B7444)",
+        color: scanning ? "rgba(255,255,255,0.6)" : "#1a0b0e",
+        border: "none", borderRadius: 8, padding: "12px 14px",
+        fontSize: 12, cursor: scanning ? "wait" : "pointer", fontFamily: F.serif,
+        fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.16em",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+      {scanning ? "Leyendo etiqueta…" : "Escanear etiqueta"}
+    </button>
+    {scanError && (
+      <div style={{ fontSize: 11, color: "#F0A0A0", fontFamily: F.serif, fontStyle: "italic",
+        marginBottom: 10, lineHeight: 1.45 }}>{scanError}</div>
+    )}
+    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 14px",
+      color: "rgba(255,255,255,0.4)", fontSize: 10, fontFamily: F.serif,
+      letterSpacing: "0.18em", textTransform: "uppercase" }}>
+      <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.18)" }} />
+      <span>O introduce a mano</span>
+      <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.18)" }} />
+    </div>
+
     <div style={{ marginBottom: 12 }}>
       <StoryFieldLabel>Nombre del vino</StoryFieldLabel>
       <DarkInput value={form.nombre} onChange={v => set("nombre", v)} placeholder="Ej: Vega Sicilia Único" />
@@ -2085,7 +2196,8 @@ const IdentificacionStoryContent = ({ form, set, addUva, updUva, tieneUvas, onAb
       Dame una pista
     </button>
   </StoryCard>
-);
+  );
+};
 
 // Contenido de la fase Visual
 const VisualStoryContent = ({ form, set }) => (

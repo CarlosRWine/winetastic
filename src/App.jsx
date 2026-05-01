@@ -621,6 +621,81 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
     </div>
   );
 
+  // Vista detalle especial para fichas multi-vino
+  if (detalle && detalle.tipo === "multi") {
+    const vinosOrdenados = [...(detalle.vinos || [])]
+      .map((v, i) => ({ ...v, _idx: i }))
+      .sort((a, b) => (Number(b.puntuacion) || 0) - (Number(a.puntuacion) || 0));
+    return (
+      <div>
+        <button onClick={() => setDetalle(null)}
+          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8,
+            padding: "8px 16px", cursor: "pointer", color: C.muted, fontFamily: F.serif,
+            fontSize: 13, marginBottom: 20, display: "flex", alignItems: "center", gap: 6 }}>
+          ← Volver
+        </button>
+
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase",
+            color: C.burgundy, fontWeight: 500, marginBottom: 6, fontFamily: F.serif }}>
+            Cata multi-vino
+          </div>
+          <h1 style={{ fontFamily: F.script, fontSize: 32, fontWeight: 500, color: C.text,
+            margin: "0 0 6px", letterSpacing: "-0.01em" }}>
+            {detalle.nombre || "Sin nombre"}
+          </h1>
+          <p style={{ color: C.muted, fontSize: 11, fontFamily: F.serif, margin: 0,
+            textTransform: "uppercase", letterSpacing: "0.16em" }}>
+            {detalle.fecha} · {(detalle.vinos || []).length} {(detalle.vinos || []).length === 1 ? "vino" : "vinos"}
+            {detalle.puntuacion > 0 ? ` · media ${detalle.puntuacion}` : ""}
+          </p>
+        </div>
+
+        <Section title="Ranking">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {vinosOrdenados.map((v, i) => {
+              const punt = Number(v.puntuacion) || 0;
+              const esTop = i === 0 && punt > 0 && vinosOrdenados.length > 1;
+              return (
+                <div key={v._idx} style={{
+                  background: esTop ? `${C.gold}18` : C.bg,
+                  border: `1px solid ${esTop ? C.gold : C.border}`,
+                  borderRadius: 10, padding: "12px 14px",
+                  display: "flex", alignItems: "center", gap: 14,
+                }}>
+                  <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500,
+                    color: esTop ? C.gold : C.muted, minWidth: 28 }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: F.serif, fontSize: 13, fontWeight: 500, color: C.text }}>
+                      {v.nombre || `Vino ${i + 1}`}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.muted, fontFamily: F.serif, marginTop: 2,
+                      textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                      {[v.bodega, v.anada].filter(Boolean).join(" · ") || "—"}
+                    </div>
+                  </div>
+                  {punt > 0 && (
+                    <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500,
+                      color: esTop ? C.gold : C.burgundy }}>
+                      {punt}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+
+        <p style={{ fontSize: 11, color: C.muted, fontStyle: "italic", textAlign: "center",
+          marginTop: 24, marginBottom: 40, fontFamily: F.serif }}>
+          La vista detallada por vino y la descarga PDF combinada llegan en la próxima entrega.
+        </p>
+      </div>
+    );
+  }
+
   if (detalle) return (
     <div>
       <button onClick={() => setDetalle(null)}
@@ -760,8 +835,10 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
                   {f.nombre || "Sin nombre"}
                 </div>
                 <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, marginTop: 2 }}>
-                  {[f.bodega, f.zona, f.anada].filter(Boolean).join(" · ")}
-                  {f.precio ? ` · ${f.precio} €` : ""}
+                  {f.tipo === "multi"
+                    ? `Cata · ${f.vinos?.length || 0} ${f.vinos?.length === 1 ? "vino" : "vinos"}`
+                    : [f.bodega, f.zona, f.anada].filter(Boolean).join(" · ") + (f.precio ? ` · ${f.precio} €` : "")
+                  }
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                   {f.uvas?.filter(u => u.v).map((u, i) => (
@@ -2323,7 +2400,7 @@ const PuntuacionStoryContent = ({ form, set }) => {
 };
 
 // ─── STORIES OVERLAY: contenedor principal ───────────────────────────────────
-const StoriesOverlay = ({ form, set, addRow, updRow, addUva, updUva, tieneUvas, onAbrirPista, onClose, onGuardar }) => {
+const StoriesOverlay = ({ form, set, addRow, updRow, addUva, updUva, tieneUvas, onAbrirPista, onClose, onAnadirVino, onFinalizarCata, vinoNum, vinosTotal }) => {
   // 9 cards: identificación + tips + contenido por cada una de las 4 fases
   const cards = [
     { type: "identificacion" },
@@ -2355,9 +2432,19 @@ const StoriesOverlay = ({ form, set, addRow, updRow, addUva, updUva, tieneUvas, 
         @keyframes wt-slide-in-left  { from { transform: translateX(-36px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
       `}</style>
 
-      {/* Barra de progreso superior tipo Stories — con safe-area-inset para iOS */}
+      {/* Cabecera con número de vino + barra de progreso (con safe-area-inset) */}
+      {vinoNum && (
+        <div style={{ position: "relative", zIndex: 2,
+          padding: "calc(env(safe-area-inset-top, 0px) + 12px) 16px 6px",
+          display: "flex", justifyContent: "center" }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase",
+            color: "#D4B98A", fontWeight: 500, fontFamily: F.serif }}>
+            Vino {vinoNum}{vinosTotal && vinosTotal > vinoNum ? ` de ${vinosTotal}+` : ""}
+          </div>
+        </div>
+      )}
       <div style={{ position: "relative", zIndex: 2,
-        padding: "calc(env(safe-area-inset-top, 0px) + 14px) 16px 0",
+        padding: vinoNum ? "0 16px 0" : "calc(env(safe-area-inset-top, 0px) + 14px) 16px 0",
         display: "flex", gap: 4 }}>
         {cards.map((_, i) => (
           <div key={i} style={{
@@ -2413,14 +2500,138 @@ const StoriesOverlay = ({ form, set, addRow, updRow, addUva, updUva, tieneUvas, 
           </button>
         )}
         {esUltima && (
-          <button onClick={onGuardar}
-            style={{ flex: 1, background: "#D4B98A", color: "#1a0b0e", border: "none",
-              borderRadius: 4, padding: "12px", fontSize: 11, cursor: "pointer",
-              fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.16em" }}>
-            Guardar ficha
-          </button>
+          <>
+            <button onClick={onAnadirVino}
+              style={{ flex: 1, background: "rgba(212,185,138,0.15)", color: "#D4B98A",
+                border: "1px solid rgba(212,185,138,0.5)", borderRadius: 4,
+                padding: "12px", fontSize: 11, cursor: "pointer",
+                fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              + Añadir otro
+            </button>
+            <button onClick={onFinalizarCata}
+              style={{ flex: 1, background: "#D4B98A", color: "#1a0b0e", border: "none",
+                borderRadius: 4, padding: "12px", fontSize: 11, cursor: "pointer",
+                fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              Finalizar cata
+            </button>
+          </>
         )}
       </div>
+    </div>
+  );
+};
+
+// ─── PERSISTENCIA CATA ACTIVA (localStorage) ────────────────────────────────
+const ACTIVE_CATA_KEY = "wt_cata_activa";
+const loadCataActiva = () => { try { return JSON.parse(localStorage.getItem(ACTIVE_CATA_KEY) || "null"); } catch { return null; } };
+const saveCataActiva = (c) => { try { localStorage.setItem(ACTIVE_CATA_KEY, JSON.stringify(c)); } catch {} };
+const clearCataActivaLS = () => { try { localStorage.removeItem(ACTIVE_CATA_KEY); } catch {} };
+
+// ─── RESUMEN DE LA CATA (multi-vino) ─────────────────────────────────────────
+const CataResumenView = ({ cata, onGuardar, onAnadirVino, onVolver, onCancelar, loading }) => {
+  const [nombre, setNombre] = useState(cata?.nombre || "");
+  const total = cata?.vinos?.length || 0;
+  const conPunt = (cata?.vinos || []).filter(v => Number(v.puntuacion) > 0);
+  const media = conPunt.length
+    ? Math.round(conPunt.reduce((a, v) => a + Number(v.puntuacion), 0) / conPunt.length)
+    : null;
+
+  const ordenados = [...(cata?.vinos || [])]
+    .map((v, originalIdx) => ({ ...v, _idx: originalIdx }))
+    .sort((a, b) => (Number(b.puntuacion) || 0) - (Number(a.puntuacion) || 0));
+
+  const handleGuardar = () => onGuardar(nombre.trim() || cata.nombre);
+
+  return (
+    <div style={{ maxWidth: 580, margin: "0 auto" }}>
+      <div style={{ textAlign: "center", marginBottom: 26 }}>
+        <div style={{ width: 56, height: 1, background: C.gold, margin: "0 auto 22px" }} />
+        <div style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: C.burgundy, fontWeight: 500, marginBottom: 6, fontFamily: F.serif }}>
+          Cata finalizada
+        </div>
+        <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.text, margin: "0 0 6px", letterSpacing: "-0.01em" }}>
+          {cata?.nombre || "Tu cata"}
+        </h1>
+        <p style={{ color: C.muted, fontSize: 11, fontFamily: F.serif, margin: 0,
+          textTransform: "uppercase", letterSpacing: "0.16em" }}>
+          {cata?.fecha} · {total} {total === 1 ? "vino" : "vinos"}
+          {media !== null && total > 1 ? ` · media ${media}` : ""}
+        </p>
+      </div>
+
+      <Section title="Nombre de la cata">
+        <TInput value={nombre} onChange={setNombre} placeholder={cata?.nombre || "Cata del 1 de mayo"} />
+        <p style={{ fontSize: 11, color: C.muted, fontStyle: "italic", margin: "8px 0 0", fontFamily: F.serif }}>
+          Puedes editarlo antes de guardar. Se usará para localizar la cata en tu archivo.
+        </p>
+      </Section>
+
+      <Section title={total > 1 ? `Ranking · ${total} vinos` : "Vino catado"}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {ordenados.map((v, i) => {
+            const punt = Number(v.puntuacion) || 0;
+            const esTop = i === 0 && punt > 0 && total > 1;
+            return (
+              <div key={v._idx} style={{
+                background: esTop ? `${C.gold}18` : C.bg,
+                border: `1px solid ${esTop ? C.gold : C.border}`,
+                borderRadius: 10, padding: "12px 14px",
+                display: "flex", alignItems: "center", gap: 14,
+              }}>
+                <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500,
+                  color: esTop ? C.gold : C.muted, minWidth: 28 }}>
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: F.serif, fontSize: 13, fontWeight: 500, color: C.text,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {v.nombre || `Vino ${i + 1}`}
+                  </div>
+                  <div style={{ fontSize: 10, color: C.muted, fontFamily: F.serif, marginTop: 2,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                    {[v.bodega, v.anada].filter(Boolean).join(" · ") || "—"}
+                  </div>
+                </div>
+                {punt > 0 && (
+                  <div style={{ fontFamily: F.script, fontSize: 22, fontWeight: 500,
+                    color: esTop ? C.gold : C.burgundy }}>
+                    {punt}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+
+      <button onClick={onAnadirVino}
+        style={{ width: "100%", background: "transparent", border: `1px dashed ${C.gold}`,
+          color: C.burgundy, borderRadius: 8, padding: "12px", cursor: "pointer", fontFamily: F.serif,
+          fontWeight: 500, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em",
+          marginBottom: 14 }}>
+        + Añadir un vino más
+      </button>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        <button onClick={handleGuardar} disabled={loading}
+          style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "14px",
+            fontSize: 12, cursor: loading ? "wait" : "pointer", fontFamily: F.serif, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.16em" }}>
+          {loading ? "Guardando…" : (total > 1 ? "Guardar cata" : "Guardar ficha")}
+        </button>
+        <button onClick={onCancelar}
+          style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+            borderRadius: 6, padding: "14px 18px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          Cancelar
+        </button>
+      </div>
+
+      <p style={{ fontSize: 11, color: C.muted, fontStyle: "italic", textAlign: "center",
+        marginTop: 20, marginBottom: 40, fontFamily: F.serif }}>
+        El comentario IA por vino y la descarga en PDF llegan en la próxima entrega.
+      </p>
     </div>
   );
 };
@@ -2454,12 +2665,31 @@ function WinetasticApp() {
   const [toast, setToast] = useState("");
   const [showPista, setShowPista] = useState(false);
   const [storiesOpen, setStoriesOpen] = useState(false);
+  // Cata multi-vino actualmente en curso (en memoria + localStorage para
+  // sobrevivir a recargas/cierres durante la sesión de cata).
+  const [cataActiva, setCataActiva] = useState(() => loadCataActiva());
+  const [savingMulti, setSavingMulti] = useState(false);
 
   // Al entrar en la vista "nueva", el modo Stories se abre automáticamente.
-  // El usuario que pulse la X volverá a home (con onClose en el overlay).
+  // Si no hay cata activa, se inicia una nueva con nombre por defecto.
   useEffect(() => {
-    if (view === "nueva") setStoriesOpen(true);
-    else setStoriesOpen(false);
+    if (view === "nueva") {
+      setStoriesOpen(true);
+      if (!cataActiva) {
+        const hoy = new Date();
+        const nombreDefault = `Cata del ${hoy.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}`;
+        const nueva = {
+          nombre: nombreDefault,
+          fecha: hoy.toLocaleDateString("es-ES"),
+          fechaIso: hoy.toISOString().slice(0, 10),
+          vinos: [],
+        };
+        setCataActiva(nueva);
+        saveCataActiva(nueva);
+      }
+    } else {
+      setStoriesOpen(false);
+    }
   }, [view]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -2529,6 +2759,63 @@ function WinetasticApp() {
   };
 
   const handleEdit = (ficha) => { setForm(ficha); setView("nueva"); };
+
+  // Guarda la cata multi-vino. Si solo hay un vino se guarda como ficha
+  // tradicional (compatible con el archivo existente); si son varios,
+  // se guarda como ficha tipo:"multi" con un array vinos.
+  const guardarCataMulti = async (nombreFinal) => {
+    if (!cataActiva || cataActiva.vinos.length === 0) return;
+    setSavingMulti(true);
+    try {
+      let ficha;
+      if (cataActiva.vinos.length === 1) {
+        ficha = {
+          ...cataActiva.vinos[0],
+          fecha: cataActiva.fecha,
+        };
+      } else {
+        ficha = {
+          tipo: "multi",
+          nombre: nombreFinal || cataActiva.nombre,
+          fecha: cataActiva.fecha,
+          vinos: cataActiva.vinos,
+          // Puntuación de la cata = media de las puntuaciones individuales
+          puntuacion: (() => {
+            const ps = cataActiva.vinos.map(v => Number(v.puntuacion)).filter(p => p > 0);
+            return ps.length ? Math.round(ps.reduce((a, b) => a + b, 0) / ps.length) : 0;
+          })(),
+        };
+      }
+      const data = await apiFichas("guardar", userId, { ficha });
+      const guardada = data?.ficha || { ...ficha, id: ficha.id || `${Date.now()}_${Math.random().toString(36).slice(2)}` };
+      setFichas(prev => {
+        const next = [...prev, guardada];
+        saveLocal(next);
+        return next;
+      });
+      setToast(cataActiva.vinos.length > 1 ? `Cata guardada · ${cataActiva.vinos.length} vinos` : "Ficha guardada");
+      setTimeout(() => setToast(""), 3000);
+      setForm(newForm());
+      setModoGuiado(null);
+      setGuiaFase(null);
+      setCataActiva(null);
+      clearCataActivaLS();
+      setView("fichas");
+    } catch (e) {
+      console.error("guardarCataMulti error:", e);
+      setToast("Error al guardar: " + (e?.message || "Sin conexión"));
+      setTimeout(() => setToast(""), 4000);
+    }
+    setSavingMulti(false);
+  };
+
+  // Volver al modo Stories para añadir otro vino desde la pantalla de resumen
+  const onAnadirVinoMas = () => {
+    setForm(newForm());
+    setModoGuiado(null);
+    setGuiaFase(null);
+    setView("nueva");
+  };
 
   if (loadingFichas && userId) return (
     <div style={{ background: C.bg, minHeight: "100vh", display: "flex",
@@ -2838,6 +3125,7 @@ function WinetasticApp() {
       {/* STORIES OVERLAY · LOTE D */}
       {storiesOpen && (
         <StoriesOverlay
+          key={(cataActiva?.vinos?.length || 0)}
           form={form}
           set={set}
           addRow={addRow}
@@ -2846,8 +3134,37 @@ function WinetasticApp() {
           updUva={updUva}
           tieneUvas={tieneUvas}
           onAbrirPista={() => setShowPista(true)}
-          onClose={() => { setStoriesOpen(false); setForm(newForm()); setModoGuiado(null); setGuiaFase(null); setView("home"); }}
-          onGuardar={() => { setStoriesOpen(false); guardar(); }}
+          vinoNum={(cataActiva?.vinos?.length || 0) + 1}
+          onClose={() => {
+            // Cancelar cata en curso: descartar todos los vinos no guardados.
+            setStoriesOpen(false);
+            setForm(newForm());
+            setModoGuiado(null);
+            setGuiaFase(null);
+            setCataActiva(null);
+            clearCataActivaLS();
+            setView("home");
+          }}
+          onAnadirVino={() => {
+            // Empuja el vino en curso a la cata y reinicia el form para el siguiente.
+            const vino = { ...form, _vinoId: form.id || `${Date.now()}_${Math.random().toString(36).slice(2)}` };
+            const updated = { ...(cataActiva || {}), vinos: [...((cataActiva && cataActiva.vinos) || []), vino] };
+            setCataActiva(updated);
+            saveCataActiva(updated);
+            setForm(newForm());
+            setModoGuiado(null);
+            setGuiaFase(null);
+            // El key del StoriesOverlay forzará un remount al cambiar vinos.length,
+            // y el overlay volverá a la primera tarjeta (Identificación).
+          }}
+          onFinalizarCata={() => {
+            const vino = { ...form, _vinoId: form.id || `${Date.now()}_${Math.random().toString(36).slice(2)}` };
+            const updated = { ...(cataActiva || {}), vinos: [...((cataActiva && cataActiva.vinos) || []), vino] };
+            setCataActiva(updated);
+            saveCataActiva(updated);
+            setStoriesOpen(false);
+            setView("cata_resumen");
+          }}
         />
       )}
 
@@ -2870,6 +3187,18 @@ function WinetasticApp() {
 
         {/* ── VISTA UNIRSE A CATA GRUPAL ── */}
         {view === "unirse_cata" && <UnirseCataView onVolver={() => setView("home")} />}
+
+        {/* ── VISTA CATA RESUMEN ── */}
+        {view === "cata_resumen" && cataActiva && (
+          <CataResumenView
+            cata={cataActiva}
+            loading={savingMulti}
+            onGuardar={(nombre) => guardarCataMulti(nombre)}
+            onAnadirVino={onAnadirVinoMas}
+            onCancelar={() => { setCataActiva(null); clearCataActivaLS(); setForm(newForm()); setView("home"); }}
+            onVolver={() => setView("home")}
+          />
+        )}
 
         {/* ── VISTA NUEVA FICHA ── */}
         {view === "nueva" && (

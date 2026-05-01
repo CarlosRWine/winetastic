@@ -883,22 +883,33 @@ const apiCata = async (body) => {
 
 // ── CREAR CATA GRUPAL ──────────────────────────────────────────────────────
 const CrearCataView = ({ onVolver }) => {
-  const [nombre, setNombre] = useState("");
-  const [anada, setAnada] = useState("");
-  const [bodega, setBodega] = useState("");
+  const hoy = new Date();
+  const fechaTxt = hoy.toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+  const [cataNombre, setCataNombre] = useState(`Cata grupal del ${fechaTxt}`);
+  const [vinos, setVinos] = useState([{ nombre: "", anada: "", bodega: "" }]);
   const [codigo, setCodigo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [finalizado, setFinalizado] = useState(false);
-  const [resultados, setResultados] = useState(null);
+  const [resultadosVinos, setResultadosVinos] = useState(null);
+
+  const updVino = (i, k, v) => setVinos(prev => prev.map((x, j) => j === i ? { ...x, [k]: v } : x));
+  const addVino = () => setVinos(prev => prev.length < 10 ? [...prev, { nombre: "", anada: "", bodega: "" }] : prev);
+  const delVino = (i) => setVinos(prev => prev.length > 1 ? prev.filter((_, j) => j !== i) : prev);
 
   const crear = async () => {
-    if (!nombre.trim()) { setError("Introduce el nombre del vino."); return; }
+    const limpios = vinos.map(v => ({ nombre: v.nombre.trim(), anada: v.anada.trim(), bodega: v.bodega.trim() }))
+                         .filter(v => v.nombre);
+    if (limpios.length === 0) { setError("Añade al menos un vino con nombre."); return; }
     setLoading(true); setError("");
-    const data = await apiCata({ accion: "crear", vino: { nombre, anada, bodega } });
-    if (data.ok) setCodigo(data.codigo);
-    else setError(data.error || "Error al crear.");
+    try {
+      const data = await apiCata({ accion: "crear", nombre: cataNombre.trim() || "Cata grupal", vinos: limpios });
+      if (data.ok) setCodigo(data.codigo);
+      else setError(data.error || "Error al crear.");
+    } catch (e) {
+      setError("Error de conexión: " + e.message);
+    }
     setLoading(false);
   };
 
@@ -907,60 +918,132 @@ const CrearCataView = ({ onVolver }) => {
     setLoading(true);
     await apiCata({ accion: "finalizar", codigo });
     const data = await apiCata({ accion: "resultados", codigo });
-    if (data.ok) setResultados(data.resumen);
+    if (data.ok) setResultadosVinos(data.vinos || []);
     setFinalizado(true);
     setLoading(false);
   };
 
-  if (finalizado && resultados) return <ResultadosView vino={{ nombre, anada, bodega }} resumen={resultados} onVolver={onVolver} />;
-
-  if (codigo) return (
-    <div style={{ maxWidth: 400, margin: "0 auto", padding: "32px 20px", textAlign: "center" }}>
-      <img src={LOGO} style={{ height: 80, marginBottom: 20 }} />
-      <div style={{ background: C.card, borderRadius: 14, border: `2px solid ${C.gold}`, padding: "28px 20px", marginBottom: 16 }}>
-        <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 6px" }}>Cata grupal creada para</p>
-        <h2 style={{ fontFamily: F.script, fontSize: 24, color: C.burgundy, margin: "0 0 20px", fontWeight: 700 }}>{nombre}</h2>
-        <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 10px" }}>Comparte este código:</p>
-        <div style={{ background: C.bg, border: `2px dashed ${C.gold}`, borderRadius: 10, padding: "16px", marginBottom: 16 }}>
-          <div style={{ fontFamily: F.script, fontSize: 44, fontWeight: 700, color: C.burgundy, letterSpacing: 8 }}>{codigo}</div>
-        </div>
-        <button onClick={() => { navigator.clipboard.writeText(codigo); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}
-          style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-            color: "#FDF7F0", border: "none", borderRadius: 6, padding: "13px",
-            fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
-            textTransform: "uppercase", letterSpacing: "0.14em" }}>
-          {copiado ? "Copiado" : "Copiar código"}
-        </button>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <button onClick={finalizar} disabled={loading}
-          style={{ background: "none", color: C.burgundy, border: `1.5px solid ${C.burgundy}`,
-            borderRadius: 6, padding: "13px", fontSize: 12, cursor: "pointer", fontFamily: F.serif,
-            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
-          {loading ? "Cargando…" : "Finalizar y ver resultados"}
-        </button>
-        <button onClick={() => { if (window.confirm("¿Salir? La cata sigue activa con el código " + codigo)) onVolver(); }}
-          style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
-            borderRadius: 9, padding: "12px", fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
-          Volver al inicio
-        </button>
-      </div>
-    </div>
+  if (finalizado && resultadosVinos) return (
+    <ResultadosView nombreCata={cataNombre} vinos={resultadosVinos} onVolver={onVolver} codigo={codigo} />
   );
 
-  return (
-    <div style={{ maxWidth: 600, margin: "0 auto" }}>
-      <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.burgundy, margin: "0 0 4px", letterSpacing: "-0.01em" }}>Crear cata grupal</h1>
-      <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px", fontFamily: F.serif }}>Introduce el vino que vais a catar</p>
-      <Section title="Identificación del vino">
-        <Field label="Nombre del Vino *">
-          <TInput value={nombre} onChange={setNombre} placeholder="Ej: Muga Reserva" />
-        </Field>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <Field label="Añada"><TInput value={anada} onChange={setAnada} placeholder="2019" type="number" /></Field>
-          <Field label="Bodega"><TInput value={bodega} onChange={setBodega} placeholder="Ej: Bodegas Muga" /></Field>
+  if (codigo) {
+    const vinosLimpios = vinos.filter(v => v.nombre.trim());
+    return (
+      <div style={{ maxWidth: 440, margin: "0 auto", padding: "32px 20px", textAlign: "center" }}>
+        <img src={LOGO} style={{ height: 70, marginBottom: 18 }} />
+        <div style={{ background: C.card, borderRadius: 14, border: `2px solid ${C.gold}`, padding: "24px 20px", marginBottom: 16 }}>
+          <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 11, margin: "0 0 4px",
+            textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500 }}>
+            Cata creada
+          </p>
+          <h2 style={{ fontFamily: F.script, fontSize: 26, color: C.burgundy, margin: "0 0 6px", fontWeight: 500, letterSpacing: "-0.01em" }}>
+            {cataNombre}
+          </h2>
+          <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 11, margin: "0 0 18px",
+            textTransform: "uppercase", letterSpacing: "0.16em" }}>
+            {vinosLimpios.length} {vinosLimpios.length === 1 ? "vino" : "vinos"}
+          </p>
+          <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 12, margin: "0 0 8px" }}>Comparte este código:</p>
+          <div style={{ background: C.bg, border: `2px dashed ${C.gold}`, borderRadius: 10, padding: "16px", marginBottom: 16 }}>
+            <div style={{ fontFamily: F.script, fontSize: 44, fontWeight: 600, color: C.burgundy, letterSpacing: 8 }}>{codigo}</div>
+          </div>
+          <button onClick={() => { navigator.clipboard.writeText(codigo); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}
+            style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+              color: "#FDF7F0", border: "none", borderRadius: 6, padding: "13px",
+              fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+              textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            {copiado ? "Copiado" : "Copiar código"}
+          </button>
         </div>
+
+        <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.border}`,
+          padding: "14px 16px", marginBottom: 16, textAlign: "left" }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+            color: C.muted, fontWeight: 500, fontFamily: F.serif, marginBottom: 10 }}>
+            Vinos a catar
+          </div>
+          {vinosLimpios.map((v, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6,
+              paddingBottom: 6, borderBottom: i < vinosLimpios.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <span style={{ fontFamily: F.script, fontSize: 16, color: C.burgundy, fontWeight: 500, minWidth: 22 }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: F.serif, fontSize: 13, color: C.text }}>{v.nombre}</div>
+                {(v.bodega || v.anada) && (
+                  <div style={{ fontFamily: F.serif, fontSize: 10, color: C.muted, marginTop: 2,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                    {[v.bodega, v.anada].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button onClick={finalizar} disabled={loading}
+            style={{ background: "none", color: C.burgundy, border: `1.5px solid ${C.burgundy}`,
+              borderRadius: 6, padding: "13px", fontSize: 12, cursor: "pointer", fontFamily: F.serif,
+              fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            {loading ? "Cargando…" : "Finalizar y ver resultados"}
+          </button>
+          <button onClick={() => { if (window.confirm("¿Salir? La cata sigue activa con el código " + codigo)) onVolver(); }}
+            style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+              borderRadius: 6, padding: "12px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+              fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 620, margin: "0 auto" }}>
+      <h1 style={{ fontFamily: F.script, fontSize: 36, fontWeight: 500, color: C.burgundy, margin: "0 0 4px", letterSpacing: "-0.01em" }}>
+        Crear cata grupal
+      </h1>
+      <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 24px", fontFamily: F.serif }}>
+        Indica el nombre de la cata y la lista de vinos que se catarán
+      </p>
+
+      <Section title="Nombre de la cata">
+        <TInput value={cataNombre} onChange={setCataNombre} placeholder={`Cata grupal del ${fechaTxt}`} />
       </Section>
+
+      <Section title={`Vinos · ${vinos.length}`}>
+        {vinos.map((v, i) => (
+          <div key={i} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10,
+            padding: "14px 14px 4px", marginBottom: 12, position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+              marginBottom: 10 }}>
+              <span style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+                color: C.burgundy, fontWeight: 500, fontFamily: F.serif }}>
+                Vino {i + 1}
+              </span>
+              {vinos.length > 1 && (
+                <button onClick={() => delVino(i)}
+                  style={{ background: "none", border: "none", color: C.muted,
+                    fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+                    textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                  Quitar
+                </button>
+              )}
+            </div>
+            <Field label="Nombre del vino *">
+              <TInput value={v.nombre} onChange={x => updVino(i, "nombre", x)} placeholder="Ej: Muga Reserva" />
+            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Field label="Añada"><TInput value={v.anada} onChange={x => updVino(i, "anada", x)} placeholder="2019" type="number" /></Field>
+              <Field label="Bodega"><TInput value={v.bodega} onChange={x => updVino(i, "bodega", x)} placeholder="Ej: Bodegas Muga" /></Field>
+            </div>
+          </div>
+        ))}
+        {vinos.length < 10 && <AddBtn onClick={addVino} label="Añadir vino" />}
+      </Section>
+
       {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, marginBottom: 12 }}>{error}</p>}
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={crear} disabled={loading}
@@ -972,8 +1055,9 @@ const CrearCataView = ({ onVolver }) => {
         </button>
         <button onClick={onVolver}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
-            borderRadius: 9, padding: "15px 18px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>
-          ← Volver
+            borderRadius: 6, padding: "15px 18px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+            fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          Cancelar
         </button>
       </div>
     </div>
@@ -985,11 +1069,15 @@ const UnirseCataView = ({ onVolver }) => {
   const [paso, setPaso] = useState("codigo");
   const [codigoInput, setCodigoInput] = useState("");
   const [nombre, setNombre] = useState("");
-  const [vino, setVino] = useState(null);
+  const [vinos, setVinos] = useState([]);
+  const [wineIdx, setWineIdx] = useState(0);
+  const [nombreCata, setNombreCata] = useState("");
+  const [vino, setVino] = useState(null); // legacy compat: vino actual
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resumen, setResumen] = useState(null);
+  const [vinosResumen, setVinosResumen] = useState(null);
 
   const buscar = async () => {
     const cod = codigoInput.trim().toUpperCase();
@@ -997,7 +1085,13 @@ const UnirseCataView = ({ onVolver }) => {
     setLoading(true); setError("");
     const data = await apiCata({ accion: "unirse", codigo: cod });
     if (!data.ok) { setError(data.error || "Código no válido."); setLoading(false); return; }
-    setVino(data.vino);
+    const lista = Array.isArray(data.vinos) && data.vinos.length > 0
+      ? data.vinos
+      : (data.vino ? [data.vino] : []);
+    setVinos(lista);
+    setVino(lista[0] || data.vino || null);
+    setNombreCata(data.nombre || "Cata grupal");
+    setWineIdx(0);
     if (data.estado === "finalizada") {
       await verResultados(cod);
     } else {
@@ -1010,15 +1104,38 @@ const UnirseCataView = ({ onVolver }) => {
   const verResultados = async (cod) => {
     setLoading(true);
     const data = await apiCata({ accion: "resultados", codigo: cod || codigoInput.trim().toUpperCase() });
-    if (data.ok) { setVino(data.vino); setResumen(data.resumen); setPaso("resultados"); }
+    if (data.ok) {
+      setVinosResumen(data.vinos || []);
+      setVino(data.vino || (data.vinos && data.vinos[0]?.vino) || vino);
+      setResumen(data.resumen || (data.vinos && data.vinos[0]) || null);
+      setNombreCata(data.nombre || nombreCata);
+      setPaso("resultados");
+    }
     else setError(data.error || "Error al cargar resultados.");
     setLoading(false);
   };
 
   const enviar = async () => {
     setLoading(true); setError("");
-    const data = await apiCata({ accion: "participar", codigo: codigoInput.trim().toUpperCase(), nombre: nombre || "Anónimo", ficha: form });
-    if (data.ok) setPaso("enviado");
+    const data = await apiCata({
+      accion: "participar",
+      codigo: codigoInput.trim().toUpperCase(),
+      nombre: nombre || "Anónimo",
+      ficha: form,
+      wineIdx,
+    });
+    if (data.ok) {
+      // Si quedan vinos por catar, avanzamos al siguiente; si no, paso 'enviado'
+      if (wineIdx < vinos.length - 1) {
+        setWineIdx(wineIdx + 1);
+        setVino(vinos[wineIdx + 1] || null);
+        setForm(newForm());
+        // Hacer scroll arriba para que el participante vea el nuevo vino claro
+        try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+      } else {
+        setPaso("enviado");
+      }
+    }
     else setError(data.error || "Error al enviar.");
     setLoading(false);
   };
@@ -1065,9 +1182,16 @@ const UnirseCataView = ({ onVolver }) => {
         borderRadius: 12, padding: "14px 18px", marginBottom: 20,
         display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif, letterSpacing: 2, textTransform: "uppercase" }}>Cata Grupal · {codigoInput.toUpperCase()}</div>
-          <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 20, fontWeight: 700 }}>{vino?.nombre}</div>
-          {vino?.bodega && <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: F.serif }}>{vino.bodega}{vino.anada ? ` · ${vino.anada}` : ""}</div>}
+          <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500 }}>
+            {vinos.length > 1 ? `Vino ${wineIdx + 1} de ${vinos.length}` : "Cata grupal"} · {codigoInput.toUpperCase()}
+          </div>
+          <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 22, fontWeight: 500, letterSpacing: "-0.01em" }}>{vino?.nombre}</div>
+          {(vino?.bodega || vino?.anada) && (
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: F.serif,
+              textTransform: "uppercase", letterSpacing: "0.12em", marginTop: 2 }}>
+              {[vino.bodega, vino.anada].filter(Boolean).join(" · ")}
+            </div>
+          )}
         </div>
         <button onClick={() => { if (window.confirm("¿Abandonar la cata? Perderás los datos.")) onVolver(); }}
           style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#FDF7F0",
@@ -1127,17 +1251,29 @@ const UnirseCataView = ({ onVolver }) => {
           color: "#FDF7F0", border: "none", borderRadius: 6, padding: "15px",
           fontSize: 13, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
           textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 40 }}>
-        {loading ? "Enviando…" : "Enviar mi cata"}
+        {loading
+          ? "Enviando…"
+          : (vinos.length > 1 && wineIdx < vinos.length - 1
+              ? `Siguiente · Vino ${wineIdx + 2}`
+              : (vinos.length > 1 ? "Enviar y finalizar" : "Enviar mi cata"))}
       </button>
     </div>
   );
 
   // PASO ENVIADO
   if (paso === "enviado") return (
-    <div style={{ maxWidth: 400, margin: "0 auto", padding: "60px 20px", textAlign: "center" }}>
+    <div style={{ maxWidth: 440, margin: "0 auto", padding: "60px 20px", textAlign: "center" }}>
       <div style={{ width: 56, height: 1, background: C.gold, margin: "0 auto 24px" }} />
-      <h2 style={{ fontFamily: F.script, fontSize: 32, color: C.burgundy, fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.01em" }}>Ficha enviada</h2>
-      <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 14, fontStyle: "italic", margin: "0 0 32px" }}>Tu cata ha sido registrada</p>
+      <h2 style={{ fontFamily: F.script, fontSize: 32, color: C.burgundy, fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.01em" }}>
+        {vinos.length > 1 ? "Catas enviadas" : "Ficha enviada"}
+      </h2>
+      <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: "0 0 6px", fontStyle: "italic" }}>
+        {nombreCata}
+      </p>
+      <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 11, margin: "0 0 32px",
+        textTransform: "uppercase", letterSpacing: "0.16em" }}>
+        {vinos.length} {vinos.length === 1 ? "vino registrado" : "vinos registrados"}
+      </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <button onClick={() => verResultados()}
           style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
@@ -1157,17 +1293,47 @@ const UnirseCataView = ({ onVolver }) => {
 
   // PASO RESULTADOS
   if (paso === "resultados") return (
-    <ResultadosView vino={vino} resumen={resumen} onVolver={onVolver} codigo={codigoInput.toUpperCase()} />
+    <ResultadosView
+      vino={vino}
+      resumen={resumen}
+      vinos={vinosResumen}
+      nombreCata={nombreCata}
+      onVolver={onVolver}
+      codigo={codigoInput.toUpperCase()}
+    />
   );
 
   return null;
 };
 
 // ── RESULTADOS ─────────────────────────────────────────────────────────────
-const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
-  const [resumenIA, setResumenIA] = useState(resumen?.resumen_ia || null);
+const ResultadosView = ({ vino, resumen, vinos, nombreCata, onVolver, codigo }) => {
+  // Modo multi: si recibimos un array `vinos` con resúmenes por vino,
+  // mostramos un selector y el detalle del vino seleccionado.
+  const esMulti = Array.isArray(vinos) && vinos.length > 1;
+  const [vinoIdx, setVinoIdx] = useState(0);
+  const cur = esMulti ? vinos[vinoIdx] : { vino, ...(resumen || {}) };
+  const curVino = esMulti ? cur?.vino : vino;
+  const curResumen = esMulti
+    ? {
+        total: cur?.total ?? 0,
+        punt_media: cur?.punt_media ?? null,
+        colores: cur?.colores ?? [],
+        aromas: cur?.aromas ?? [],
+        aromas_agitada: cur?.aromas_agitada ?? [],
+        sabores: cur?.sabores ?? [],
+        participantes: cur?.participantes ?? [],
+      }
+    : (resumen || {});
+  const [resumenIA, setResumenIA] = useState(curResumen?.resumen_ia || null);
   const [loadingIA, setLoadingIA] = useState(false);
-  const [guardado, setGuardado] = useState(!!resumen?.resumen_ia);
+  const [guardado, setGuardado] = useState(!!curResumen?.resumen_ia);
+
+  // Reset del resumen IA al cambiar de vino en modo multi
+  useEffect(() => {
+    setResumenIA(null);
+    setGuardado(false);
+  }, [vinoIdx, esMulti]);
 
   const generarResumenIA = async () => {
     setLoadingIA(true);
@@ -1175,7 +1341,7 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
       // 1. Pedir resumen a la IA
       const r = await fetch("/api/pista", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "resumen_cata", vino, resumen })
+        body: JSON.stringify({ tipo: "resumen_cata", vino: curVino, resumen: curResumen })
       });
       const data = await r.json();
       if (!data.text) throw new Error("Sin respuesta");
@@ -1195,18 +1361,21 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
     setLoadingIA(false);
   };
 
-  if (!resumen || resumen.total === 0) return (
+  const sinFichas = !esMulti && (!resumen || resumen.total === 0);
+  const sinFichasMulti = esMulti && (vinos || []).every(v => (v?.total || 0) === 0);
+  if (sinFichas || sinFichasMulti) return (
     <div style={{ textAlign: "center", padding: "60px 20px" }}>
       <div style={{ width: 56, height: 1, background: C.gold, margin: "0 auto 24px" }} />
       <h2 style={{ fontFamily: F.script, fontSize: 28, color: C.burgundy, fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.01em" }}>
-        {vino?.nombre}
+        {nombreCata || vino?.nombre || "Cata grupal"}
       </h2>
       <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 14, fontStyle: "italic" }}>
         Aún no hay fichas enviadas.
       </p>
       <button onClick={onVolver} style={{ marginTop: 24, background: "none", color: C.muted,
-        border: `1px solid ${C.border}`, borderRadius: 9, padding: "12px 24px",
-        fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>Volver al inicio</button>
+        border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 24px",
+        fontSize: 11, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+        textTransform: "uppercase", letterSpacing: "0.14em" }}>Volver al inicio</button>
     </div>
   );
 
@@ -1227,31 +1396,79 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
       {/* Cabecera */}
       <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
         borderRadius: 12, padding: "20px", marginBottom: 20, textAlign: "center" }}>
-        {codigo && <div style={{ color: C.gold, fontSize: 11, fontFamily: F.serif, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>Código · {codigo}</div>}
-        <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 24, fontWeight: 700 }}>{vino?.nombre}</div>
-        {vino?.bodega && <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: F.serif, marginTop: 4 }}>{vino.bodega}{vino.anada ? ` · ${vino.anada}` : ""}</div>}
-        <div style={{ color: C.gold, fontFamily: F.serif, fontSize: 13, marginTop: 8 }}>
-          {resumen.total} {resumen.total === 1 ? "participante" : "participantes"}
+        {codigo && (
+          <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif, letterSpacing: "0.18em",
+            textTransform: "uppercase", marginBottom: 4, fontWeight: 500 }}>
+            Código · {codigo}
+          </div>
+        )}
+        {esMulti && nombreCata && (
+          <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: 22, fontWeight: 500,
+            letterSpacing: "-0.005em", marginBottom: 4 }}>{nombreCata}</div>
+        )}
+        <div style={{ color: "#FDF7F0", fontFamily: F.script, fontSize: esMulti ? 18 : 24, fontWeight: 500, letterSpacing: "-0.005em", opacity: esMulti ? 0.85 : 1 }}>
+          {curVino?.nombre || "Cata grupal"}
+        </div>
+        {(curVino?.bodega || curVino?.anada) && (
+          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: F.serif, marginTop: 4,
+            textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            {[curVino.bodega, curVino.anada].filter(Boolean).join(" · ")}
+          </div>
+        )}
+        <div style={{ color: C.gold, fontFamily: F.serif, fontSize: 12, marginTop: 8,
+          textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 500 }}>
+          {curResumen.total || 0} {(curResumen.total || 0) === 1 ? "participante" : "participantes"}
         </div>
       </div>
 
+      {/* Selector de vino (solo si hay varios) */}
+      {esMulti && (
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 18,
+          paddingBottom: 4 }}>
+          {vinos.map((v, i) => {
+            const activo = i === vinoIdx;
+            return (
+              <button key={i} onClick={() => setVinoIdx(i)}
+                style={{
+                  flexShrink: 0,
+                  background: activo ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : C.card,
+                  color: activo ? "#FDF7F0" : C.muted,
+                  border: `1px solid ${activo ? C.burgundy : C.border}`,
+                  borderRadius: 6, padding: "9px 14px",
+                  fontSize: 11, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.12em",
+                  whiteSpace: "nowrap",
+                }}>
+                Vino {i + 1}
+                {(v?.punt_media != null) && (
+                  <span style={{ marginLeft: 8, fontFamily: F.script, fontSize: 13, fontWeight: 500,
+                    opacity: activo ? 0.9 : 1, color: activo ? "#FDF7F0" : C.burgundy }}>
+                    {v.punt_media}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Puntuación media */}
-      {resumen.punt_media !== null && (
+      {curResumen.punt_media != null && (
         <Section title="Puntuación media">
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <div style={{ width: 80, height: 80, borderRadius: "50%", flexShrink: 0,
               background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               color: "#FDF7F0", boxShadow: `0 4px 20px ${C.burgundy}40` }}>
-              <span style={{ fontFamily: F.script, fontSize: 26, fontWeight: 700, lineHeight: 1 }}>{resumen.punt_media}</span>
+              <span style={{ fontFamily: F.script, fontSize: 26, fontWeight: 500, lineHeight: 1 }}>{curResumen.punt_media}</span>
               <span style={{ fontSize: 10, opacity: 0.8, fontFamily: F.serif }}>/100</span>
             </div>
             <div style={{ flex: 1 }}>
-              {resumen.participantes.map((p, i) => (
+              {(curResumen.participantes || []).map((p, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between",
-                  padding: "6px 0", borderBottom: i < resumen.participantes.length-1 ? `1px solid ${C.border}` : "none" }}>
+                  padding: "6px 0", borderBottom: i < (curResumen.participantes.length - 1) ? `1px solid ${C.border}` : "none" }}>
                   <span style={{ fontFamily: F.serif, fontSize: 13, color: C.text }}>{p.nombre}</span>
-                  <span style={{ fontFamily: F.script, fontSize: 16, color: C.burgundy, fontWeight: 700 }}>{p.puntuacion}</span>
+                  <span style={{ fontFamily: F.script, fontSize: 16, color: C.burgundy, fontWeight: 500 }}>{p.puntuacion}</span>
                 </div>
               ))}
             </div>
@@ -1260,30 +1477,30 @@ const ResultadosView = ({ vino, resumen, onVolver, codigo }) => {
       )}
 
       {/* Colores */}
-      {resumen.colores?.length > 0 && (
+      {curResumen.colores?.length > 0 && (
         <Section title="Colores percibidos">
-          <TagList items={resumen.colores} />
+          <TagList items={curResumen.colores} />
         </Section>
       )}
 
       {/* Aromas */}
-      {(resumen.aromas?.length > 0 || resumen.aromas_agitada?.length > 0) && (
+      {(curResumen.aromas?.length > 0 || curResumen.aromas_agitada?.length > 0) && (
         <Section title="Aromas detectados">
-          {resumen.aromas?.length > 0 && <>
+          {curResumen.aromas?.length > 0 && <>
             <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "0 0 8px", fontFamily: F.serif }}>Copa en reposo</p>
-            <TagList items={resumen.aromas} />
+            <TagList items={curResumen.aromas} />
           </>}
-          {resumen.aromas_agitada?.length > 0 && <>
+          {curResumen.aromas_agitada?.length > 0 && <>
             <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic", margin: "16px 0 8px", fontFamily: F.serif }}>Tras agitar</p>
-            <TagList items={resumen.aromas_agitada} />
+            <TagList items={curResumen.aromas_agitada} />
           </>}
         </Section>
       )}
 
       {/* Sabores */}
-      {resumen.sabores?.length > 0 && (
+      {curResumen.sabores?.length > 0 && (
         <Section title="Sabores detectados">
-          <TagList items={resumen.sabores} />
+          <TagList items={curResumen.sabores} />
         </Section>
       )}
 

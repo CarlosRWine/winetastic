@@ -584,14 +584,22 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
   const [sort, setSort] = useState("fecha");
   const [detalle, setDetalle] = useState(null);
 
+  // Extrae el timestamp numérico desde el inicio del id (sirve tanto para
+  // ids antiguos numéricos como para los nuevos `${Date.now()}_${random}`).
+  const tsOf = (id) => {
+    if (typeof id === "number") return id;
+    const m = String(id ?? "").match(/^(\d+)/);
+    return m ? parseInt(m[1], 10) : 0;
+  };
+
   const filtered = fichas
     .filter(f => f.nombre.toLowerCase().includes(search.toLowerCase()) ||
       (f.bodega || "").toLowerCase().includes(search.toLowerCase()) ||
       (f.zona || "").toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      if (sort === "fecha") return b.id - a.id;
-      if (sort === "puntuacion") return b.puntuacion - a.puntuacion;
-      if (sort === "anada") return b.anada - a.anada;
+      if (sort === "fecha") return tsOf(b.id) - tsOf(a.id);
+      if (sort === "puntuacion") return (Number(b.puntuacion) || 0) - (Number(a.puntuacion) || 0);
+      if (sort === "anada") return (Number(b.anada) || 0) - (Number(a.anada) || 0);
       return 0;
     });
 
@@ -674,7 +682,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
             color: "#FDF7F0", fontFamily: F.script, fontWeight: 700,
             boxShadow: `0 4px 16px ${C.burgundy}40` }}>
             <span style={{ fontSize: 26, lineHeight: 1 }}>{detalle.puntuacion !== "" && detalle.puntuacion !== undefined ? detalle.puntuacion : "—"}</span>
-            <span style={{ fontSize: 11, opacity: 0.8, fontFamily: "'EB Garamond', serif" }}>/100</span>
+            <span style={{ fontSize: 11, opacity: 0.8, fontFamily: F.script }}>/100</span>
           </div>
           {detalle.notas && <p style={{ flex: 1, fontSize: 14, fontFamily: F.serif, fontStyle: "italic", color: C.muted, margin: 0 }}>{detalle.notas}</p>}
         </div>
@@ -744,7 +752,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
                 color: "#FDF7F0", fontFamily: F.script, fontWeight: 700, flexShrink: 0,
                 boxShadow: `0 2px 8px ${C.burgundy}40` }}>
                 <span style={{ fontSize: f.puntuacion > 99 ? 15 : 18, lineHeight: 1 }}>{f.puntuacion !== "" && f.puntuacion !== undefined ? f.puntuacion : "—"}</span>
-                {(f.puntuacion !== "" && f.puntuacion !== undefined) && <span style={{ fontSize: 8, opacity: 0.8, fontFamily: "'EB Garamond', serif" }}>/100</span>}
+                {(f.puntuacion !== "" && f.puntuacion !== undefined) && <span style={{ fontSize: 8, opacity: 0.8, fontFamily: F.script }}>/100</span>}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: F.script, fontSize: 18, color: C.burgundy, fontWeight: 700,
@@ -766,11 +774,12 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
               </div>
               <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, flexShrink: 0, textAlign: "right" }}>
                 <div>{f.fecha}</div>
-                <div style={{ marginTop: 4, fontSize: 10, fontFamily: F.serif, color: 
-                  f.puntuacion >= 90 ? "#C9A060" : f.puntuacion >= 75 ? "#722838" : 
+                <div style={{ marginTop: 4, fontSize: 9, fontFamily: F.serif, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.16em", color:
+                  f.puntuacion >= 90 ? "#C9A060" : f.puntuacion >= 75 ? "#722838" :
                   f.puntuacion >= 60 ? C.muted : f.puntuacion >= 40 ? "#999" : "#ccc" }}>
-                  {f.puntuacion >= 90 ? "⭐ Excepcional" : f.puntuacion >= 75 ? "Muy bueno" : 
-                   f.puntuacion >= 60 ? "Bueno" : f.puntuacion >= 40 ? "Correcto" : 
+                  {f.puntuacion >= 90 ? "Excepcional" : f.puntuacion >= 75 ? "Muy bueno" :
+                   f.puntuacion >= 60 ? "Bueno" : f.puntuacion >= 40 ? "Correcto" :
                    f.puntuacion > 0 ? "Deficiente" : ""}
                 </div>
               </div>
@@ -1645,7 +1654,19 @@ const EventosView = () => {
   useEffect(() => {
     fetch("/eventos.json")
       .then(r => r.json())
-      .then(data => { setEventos(data); setLoading(false); })
+      .then(data => {
+        // Solo eventos cuya fecha sea hoy o futura
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const futuros = (Array.isArray(data) ? data : [])
+          .filter(ev => {
+            if (!ev?.fecha) return true;
+            const f = new Date(ev.fecha);
+            return !isNaN(f) && f >= hoy;
+          })
+          .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+        setEventos(futuros);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -1892,6 +1913,331 @@ const GuiaCard = ({ seccion, onContinuar }) => {
     </div>
   );
 };
+// ─── STORIES OVERLAY (Lote D) ──────────────────────────────────────────────
+// Variantes oscuras de los inputs reutilizando la lógica de los originales.
+
+const DarkScalePicker = ({ value, onChange, max = 5 }) => (
+  <div style={{ display: "flex", gap: 9, alignItems: "center", flexWrap: "wrap" }}>
+    {[...Array(max)].map((_, i) => {
+      const filled = i < value;
+      return (
+        <button key={i} onClick={() => onChange(value === i + 1 ? 0 : i + 1)}
+          style={{ width: 28, height: 28, borderRadius: "50%", padding: 0, cursor: "pointer",
+            border: `1.5px solid ${filled ? "#D4B98A" : "rgba(255,255,255,0.35)"}`,
+            background: filled ? "#D4B98A" : "transparent",
+            transition: "all 0.18s ease", flexShrink: 0,
+            boxShadow: filled ? "0 1px 6px rgba(212,185,138,0.4)" : "none" }} />
+      );
+    })}
+    {value > 0 && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: F.serif, marginLeft: 4 }}>{value}/{max}</span>}
+  </div>
+);
+
+const DarkInput = ({ value, onChange, placeholder, type = "text" }) => (
+  <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+    style={{
+      width: "100%", background: "rgba(255,255,255,0.07)",
+      border: "1px solid rgba(255,255,255,0.18)", borderRadius: 6,
+      padding: "10px 13px", color: "white", fontSize: 14, outline: "none",
+      boxSizing: "border-box", fontFamily: F.serif, WebkitAppearance: "none",
+      caretColor: "#D4B98A",
+    }}
+    onFocus={e => e.target.style.borderColor = "#D4B98A"}
+    onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.18)"} />
+);
+
+const DarkAromaRow = ({ item, onChange, label, index }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: F.serif, minWidth: 16 }}>{String(index + 1).padStart(2, "0")}</span>
+      <DarkInput value={item.text} onChange={v => onChange({ ...item, text: v })} placeholder={label} />
+    </div>
+    <div style={{ paddingLeft: 24 }}>
+      <DarkScalePicker value={item.int} onChange={v => onChange({ ...item, int: v })} />
+    </div>
+  </div>
+);
+
+const DarkAddBtn = ({ onClick, label = "Añadir" }) => (
+  <button onClick={onClick}
+    style={{ fontSize: 11, color: "#D4B98A", background: "transparent",
+      border: "1px dashed rgba(212,185,138,0.5)", borderRadius: 4,
+      cursor: "pointer", padding: "8px 14px", marginTop: 4,
+      fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase",
+      letterSpacing: "0.14em", display: "inline-flex", alignItems: "center", gap: 5 }}>
+    + {label}
+  </button>
+);
+
+// Tarjeta base de un Story
+const StoryCard = ({ children, gradientFrom = "#8B1A2E", gradientTo = "#2C1810" }) => (
+  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+    background: "#1a0b0e", overflow: "hidden" }}>
+    <div style={{ position: "absolute", inset: 0,
+      background: `radial-gradient(ellipse at 30% 20%, ${gradientFrom} 0%, ${gradientTo} 50%, #0F0508 100%)` }} />
+    <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column",
+      padding: "24px 22px 20px", color: "white", overflowY: "auto", boxSizing: "border-box" }}>
+      {children}
+    </div>
+  </div>
+);
+
+// Tarjeta de consejos (primera de cada fase)
+const StoryTipsCard = ({ titulo, tips }) => (
+  <StoryCard>
+    <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
+      Antes de empezar
+    </div>
+    <div style={{ fontFamily: F.script, fontSize: 32, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 24 }}>
+      {titulo}
+    </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {tips.map((t, i) => (
+        <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+          <div style={{ fontSize: 11, color: "#D4B98A", fontWeight: 500, minWidth: 20, fontFamily: F.serif }}>
+            {String(i + 1).padStart(2, "0")}
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.92, lineHeight: 1.55, fontFamily: F.serif }}>
+            {t}
+          </div>
+        </div>
+      ))}
+    </div>
+  </StoryCard>
+);
+
+// Cabecera de tarjeta de ejecución
+const StoryHeader = ({ tag, titulo }) => (
+  <>
+    <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#D4B98A", fontWeight: 500, marginBottom: 8 }}>
+      {tag}
+    </div>
+    <div style={{ fontFamily: F.script, fontSize: 28, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: 22 }}>
+      {titulo}
+    </div>
+  </>
+);
+
+const StoryFieldLabel = ({ children }) => (
+  <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+    color: "rgba(255,255,255,0.55)", fontWeight: 500, marginBottom: 8, fontFamily: F.serif }}>
+    {children}
+  </div>
+);
+
+// Contenido de la fase Visual
+const VisualStoryContent = ({ form, set }) => (
+  <StoryCard>
+    <StoryHeader tag="Fase 1 / 4" titulo="Análisis visual" />
+    <div style={{ marginBottom: 18 }}>
+      <StoryFieldLabel>Color del vino</StoryFieldLabel>
+      <DarkInput value={form.color} onChange={v => set("color", v)} placeholder="Ej: rojo cereza con ribete granate" />
+    </div>
+    {[["int_color", "Intensidad"], ["lagrima", "Lágrima"], ["opacidad", "Opacidad"], ["limpieza", "Limpieza"], ["punt_vis", "Puntuación visual"]].map(([k, l]) => (
+      <div key={k} style={{ marginBottom: 14 }}>
+        <StoryFieldLabel>{l}</StoryFieldLabel>
+        <DarkScalePicker value={form[k]} onChange={v => set(k, v)} />
+      </div>
+    ))}
+  </StoryCard>
+);
+
+// Contenido de la fase Olfativa
+const OlfatoStoryContent = ({ form, set, addRow, updRow }) => (
+  <StoryCard gradientFrom="#6B4C2A" gradientTo="#3A2814">
+    <StoryHeader tag="Fase 2 / 4" titulo="Análisis olfativo" />
+    <div style={{ marginBottom: 16 }}>
+      <StoryFieldLabel>1ª nariz · sin agitar</StoryFieldLabel>
+      {form.arp.map((a, i) => <DarkAromaRow key={i} item={a} onChange={v => updRow("arp", i, v)} label="Aroma detectado" index={i} />)}
+      {form.arp.length < 5 && <DarkAddBtn onClick={() => addRow("arp")} label="Añadir aroma" />}
+    </div>
+    <div style={{ height: 1, background: "rgba(255,255,255,0.15)", margin: "18px 0" }} />
+    <div style={{ marginBottom: 16 }}>
+      <StoryFieldLabel>2ª nariz · tras agitar</StoryFieldLabel>
+      {form.ara.map((a, i) => <DarkAromaRow key={i} item={a} onChange={v => updRow("ara", i, v)} label="Aroma detectado" index={i} />)}
+      {form.ara.length < 5 && <DarkAddBtn onClick={() => addRow("ara")} label="Añadir aroma" />}
+    </div>
+    <div style={{ height: 1, background: "rgba(255,255,255,0.15)", margin: "18px 0" }} />
+    <StoryFieldLabel>Puntuación olfativa</StoryFieldLabel>
+    <DarkScalePicker value={form.punt_olf} onChange={v => set("punt_olf", v)} />
+  </StoryCard>
+);
+
+// Contenido de la fase Gustativa
+const GustoStoryContent = ({ form, set, addRow, updRow }) => (
+  <StoryCard gradientFrom="#2D5A1B" gradientTo="#143009">
+    <StoryHeader tag="Fase 3 / 4" titulo="Análisis gustativo" />
+    <div style={{ marginBottom: 16 }}>
+      <StoryFieldLabel>Sabores detectados</StoryFieldLabel>
+      {form.sab.map((s, i) => <DarkAromaRow key={i} item={s} onChange={v => updRow("sab", i, v)} label="Sabor" index={i} />)}
+      {form.sab.length < 5 && <DarkAddBtn onClick={() => addRow("sab")} label="Añadir sabor" />}
+    </div>
+    <div style={{ height: 1, background: "rgba(255,255,255,0.15)", margin: "18px 0" }} />
+    <div style={{ marginBottom: 16 }}>
+      <StoryFieldLabel>Seco → Dulce · {SECO_LABELS[form.seco_dulce]}</StoryFieldLabel>
+      <input type="range" min={0} max={5} value={form.seco_dulce}
+        onChange={e => set("seco_dulce", +e.target.value)}
+        style={{ width: "100%", accentColor: "#D4B98A", cursor: "pointer" }} />
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+      <div>
+        <StoryFieldLabel>Astringencia</StoryFieldLabel>
+        <DarkScalePicker value={form.astringencia} onChange={v => set("astringencia", v)} />
+      </div>
+      <div>
+        <StoryFieldLabel>Retrogusto</StoryFieldLabel>
+        <DarkScalePicker value={form.retro_p} onChange={v => set("retro_p", v)} />
+      </div>
+    </div>
+    <div style={{ marginBottom: 14 }}>
+      <StoryFieldLabel>Nota de retrogusto</StoryFieldLabel>
+      <DarkInput value={form.retro_t} onChange={v => set("retro_t", v)} placeholder="Describe el retrogusto…" />
+    </div>
+    <StoryFieldLabel>Puntuación gustativa</StoryFieldLabel>
+    <DarkScalePicker value={form.punt_gus} onChange={v => set("punt_gus", v)} />
+  </StoryCard>
+);
+
+// Contenido de la fase Puntuación
+const PuntuacionStoryContent = ({ form, set }) => {
+  const vals = [form.punt_vis, form.punt_olf, form.punt_gus].filter(v => v > 0);
+  const media = vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 20) : null;
+  return (
+    <StoryCard gradientFrom="#4A0D1A" gradientTo="#2C1810">
+      <StoryHeader tag="Fase 4 / 4" titulo="Puntuación final" />
+      {media !== null && (
+        <div style={{ marginBottom: 22, padding: "12px 16px",
+          background: "rgba(212,185,138,0.12)", border: "1px solid rgba(212,185,138,0.35)",
+          borderRadius: 8, display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.65)", fontFamily: F.serif }}>
+            Media orientativa
+          </div>
+          <div style={{ fontFamily: F.script, fontSize: 26, fontWeight: 500, color: "#D4B98A" }}>{media}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontFamily: F.serif, fontStyle: "italic" }}>
+            visual + olfativa + gustativa
+          </div>
+        </div>
+      )}
+      <div style={{ marginBottom: 22 }}>
+        <StoryFieldLabel>Puntuación final · 0-100</StoryFieldLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <input type="range" min={0} max={100} value={form.puntuacion || 0}
+            onChange={e => set("puntuacion", +e.target.value)}
+            style={{ flex: 1, accentColor: "#D4B98A", cursor: "pointer", height: 6 }} />
+          <div style={{ width: 60, height: 60, borderRadius: "50%", flexShrink: 0,
+            background: "linear-gradient(135deg, #D4B98A, #8B7444)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#1a0b0e", fontSize: 20, fontFamily: F.script, fontWeight: 500 }}>
+            {form.puntuacion || 0}
+          </div>
+        </div>
+      </div>
+      <StoryFieldLabel>Notas libres</StoryFieldLabel>
+      <textarea value={form.notas} onChange={e => set("notas", e.target.value)}
+        placeholder="Observaciones, maridajes, ocasión…"
+        style={{
+          width: "100%", background: "rgba(255,255,255,0.07)",
+          border: "1px solid rgba(255,255,255,0.18)", borderRadius: 6,
+          padding: "10px 13px", color: "white", fontSize: 14, outline: "none",
+          boxSizing: "border-box", fontFamily: F.serif, minHeight: 80, resize: "vertical",
+          lineHeight: 1.6, caretColor: "#D4B98A",
+        }}
+        onFocus={e => e.target.style.borderColor = "#D4B98A"}
+        onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.18)"} />
+    </StoryCard>
+  );
+};
+
+// ─── STORIES OVERLAY: contenedor principal ───────────────────────────────────
+const StoriesOverlay = ({ form, set, addRow, updRow, onClose, onGuardar }) => {
+  // 8 cards: tips + contenido por cada una de las 4 fases sensoriales
+  const cards = [
+    { type: "tips", titulo: "Análisis visual",   tips: GUIA_CATA.visual.pasos },
+    { type: "content", phase: "visual" },
+    { type: "tips", titulo: "Análisis olfativo", tips: GUIA_CATA.olfativo.pasos },
+    { type: "content", phase: "olfato" },
+    { type: "tips", titulo: "Análisis gustativo", tips: GUIA_CATA.gustativo.pasos },
+    { type: "content", phase: "gusto" },
+    { type: "tips", titulo: "Puntuación final",   tips: GUIA_CATA.puntuacion.pasos },
+    { type: "content", phase: "puntuacion" },
+  ];
+  const [idx, setIdx] = useState(0);
+  const total = cards.length;
+  const card = cards[idx];
+  const esUltima = idx === total - 1;
+
+  const next = () => setIdx(i => Math.min(i + 1, total - 1));
+  const prev = () => setIdx(i => Math.max(i - 1, 0));
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 2000, background: "#1a0b0e",
+      display: "flex", flexDirection: "column", overflow: "hidden",
+    }}>
+      {/* Barra de progreso superior tipo Stories */}
+      <div style={{ position: "relative", padding: "12px 16px 0",
+        display: "flex", gap: 4, zIndex: 2 }}>
+        {cards.map((_, i) => (
+          <div key={i} style={{
+            flex: 1, height: 2, borderRadius: 1,
+            background: i < idx ? "white" : (i === idx ? "white" : "rgba(255,255,255,0.3)"),
+          }} />
+        ))}
+      </div>
+
+      {/* Botón cerrar */}
+      <div style={{ position: "absolute", top: 22, right: 16, zIndex: 3 }}>
+        <button onClick={onClose}
+          style={{ background: "rgba(255,255,255,0.12)", border: "none",
+            color: "white", borderRadius: "50%", width: 32, height: 32, cursor: "pointer",
+            fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          ✕
+        </button>
+      </div>
+
+      {/* Contenido principal */}
+      <div style={{ position: "relative", flex: 1, marginTop: 8 }}>
+        {card.type === "tips" && <StoryTipsCard titulo={card.titulo} tips={card.tips} />}
+        {card.type === "content" && card.phase === "visual" && <VisualStoryContent form={form} set={set} />}
+        {card.type === "content" && card.phase === "olfato" && <OlfatoStoryContent form={form} set={set} addRow={addRow} updRow={updRow} />}
+        {card.type === "content" && card.phase === "gusto"  && <GustoStoryContent  form={form} set={set} addRow={addRow} updRow={updRow} />}
+        {card.type === "content" && card.phase === "puntuacion" && <PuntuacionStoryContent form={form} set={set} />}
+      </div>
+
+      {/* Footer con navegación */}
+      <div style={{ position: "relative", padding: "14px 16px 18px",
+        display: "flex", gap: 10, zIndex: 2, background: "rgba(0,0,0,0.35)",
+        borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        {idx > 0 && (
+          <button onClick={prev}
+            style={{ background: "transparent", color: "rgba(255,255,255,0.7)",
+              border: "1px solid rgba(255,255,255,0.25)", borderRadius: 4,
+              padding: "12px 18px", fontSize: 11, cursor: "pointer", fontFamily: F.serif,
+              fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            Atrás
+          </button>
+        )}
+        {!esUltima && (
+          <button onClick={next}
+            style={{ flex: 1, background: "white", color: "#1a0b0e", border: "none",
+              borderRadius: 4, padding: "12px", fontSize: 11, cursor: "pointer",
+              fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.16em" }}>
+            Siguiente
+          </button>
+        )}
+        {esUltima && (
+          <button onClick={onGuardar}
+            style={{ flex: 1, background: "#D4B98A", color: "#1a0b0e", border: "none",
+              borderRadius: 4, padding: "12px", fontSize: 11, cursor: "pointer",
+              fontFamily: F.serif, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.16em" }}>
+            Guardar ficha
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 
 function WinetasticApp() {
   const [view, setView] = useState("home");
@@ -1920,6 +2266,7 @@ function WinetasticApp() {
   const [form, setForm] = useState(newForm());
   const [toast, setToast] = useState("");
   const [showPista, setShowPista] = useState(false);
+  const [storiesOpen, setStoriesOpen] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const addRow = k => { if (form[k].length < 5) set(k, [...form[k], { text: "", int: 0 }]); };
@@ -2292,6 +2639,18 @@ function WinetasticApp() {
       {/* MODAL PISTA */}
       {showPista && <PistaModal uvas={form.uvas} nombre={form.nombre} anada={form.anada} bodega={form.bodega} onClose={() => setShowPista(false)} />}
 
+      {/* STORIES OVERLAY · LOTE D */}
+      {storiesOpen && (
+        <StoriesOverlay
+          form={form}
+          set={set}
+          addRow={addRow}
+          updRow={updRow}
+          onClose={() => setStoriesOpen(false)}
+          onGuardar={() => { setStoriesOpen(false); guardar(); }}
+        />
+      )}
+
       {view !== "home" && <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px" }}>
 
         {/* ── VISTA MIS FICHAS ── */}
@@ -2442,6 +2801,27 @@ function WinetasticApp() {
                 </button>
               </div>
             </Section>
+
+            {/* INICIAR ANÁLISIS SENSORIAL · MODO STORIES */}
+            <button onClick={() => setStoriesOpen(true)}
+              style={{ width: "100%", marginBottom: 22,
+                background: "linear-gradient(135deg, #2C1810, #4A0D1A 60%, #1a0b0e)",
+                color: "#FDF7F0", border: "none", borderRadius: 8, padding: "16px 20px",
+                fontSize: 12, cursor: "pointer", fontFamily: F.serif, fontWeight: 500,
+                textTransform: "uppercase", letterSpacing: "0.18em",
+                boxShadow: "0 6px 22px rgba(74,13,26,0.35)",
+                display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                <span style={{ fontSize: 10, opacity: 0.7, letterSpacing: "0.18em", fontWeight: 500 }}>Modo Stories</span>
+                <span style={{ fontFamily: F.script, fontSize: 18, textTransform: "none", letterSpacing: "-0.005em", fontWeight: 500 }}>
+                  Iniciar análisis sensorial
+                </span>
+              </span>
+              <span style={{ width: 36, height: 36, borderRadius: "50%",
+                background: "rgba(196,168,130,0.22)", display: "flex",
+                alignItems: "center", justifyContent: "center", color: "#C4A882",
+                fontSize: 18 }}>›</span>
+            </button>
 
             {/* VISUAL */}
             {modoGuiado && guiaFase === "visual" && (

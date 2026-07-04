@@ -20,47 +20,32 @@ export default async function handler(req, res) {
       messages = [{ role: "user", content: `Eres un sommelier experto. El usuario busca: "${query}"\n\nBusca en internet y recomienda 2-3 vinos concretos en español. Para cada vino incluye:\n🍷 Nombre y bodega\n📍 Denominación de origen\n💰 Precio aproximado\n⭐ Puntuación si está disponible\n📝 Por qué encaja con lo que busca\n🛒 Dónde comprarlo (Uvinum, Bodeboca, Vinoteca...)\n\nSé concreto. Máximo 400 palabras.` }];
 
     } else if (tipo === "resumen_cata") {
-      const { vino, resumen } = req.body;
-      const aromas = [...(resumen.aromas || []), ...(resumen.aromas_agitada || [])].map(a => `${a.texto} (${a.count} personas)`).join(", ");
-      const sabores = (resumen.sabores || []).map(s => `${s.texto} (${s.count} personas)`).join(", ");
-      const colores = (resumen.colores || []).map(c => `${c.texto} (${c.count} personas)`).join(", ");
-      const participantes = resumen.participantes?.map(p => `${p.nombre}: ${p.puntuacion}/100`).join(", ");
+      // Acepta multi-vino: datos = [{vino, resumen}, ...]  (v3)
+      // o formato antiguo: {vino, resumen}
+      const bloques = Array.isArray(req.body.datos)
+        ? req.body.datos
+        : [{ vino: req.body.vino, resumen: req.body.resumen }];
 
-      messages = [{ role: "user", content: `Eres un sommelier experto. Redacta una nota de cata colectiva en español para el vino "${vino.nombre}"${vino.bodega ? ` de ${vino.bodega}` : ""}${vino.anada ? `, añada ${vino.anada}` : ""}.
+      const describir = ({ vino, resumen }) => {
+        if (!resumen || !resumen.total) return `"${vino?.nombre || "Vino"}": sin fichas registradas.`;
+        const aromas = [...(resumen.aromas || []), ...(resumen.aromas_agitada || [])]
+          .map(a => `${a.texto} (${a.count})`).join(", ");
+        const sabores = (resumen.sabores || []).map(s => `${s.texto} (${s.count})`).join(", ");
+        const colores = (resumen.colores || []).map(c => `${c.texto} (${c.count})`).join(", ");
+        return `"${vino.nombre}"${vino.bodega ? ` de ${vino.bodega}` : ""}${vino.anada ? `, añada ${vino.anada}` : ""} — ${resumen.total} fichas, media ${resumen.punt_media}/100. Colores: ${colores || "—"}. Aromas: ${aromas || "—"}. Sabores: ${sabores || "—"}.`;
+      };
 
-Datos de la cata grupal (${resumen.total} participantes):
-- Puntuación media: ${resumen.punt_media}/100
-- Puntuaciones individuales: ${participantes}
-- Colores percibidos: ${colores || "no registrados"}
-- Aromas detectados: ${aromas || "no registrados"}
-- Sabores detectados: ${sabores || "no registrados"}
+      const cuerpo = bloques.map(describir).join("\n");
+      const multi = bloques.length > 1;
 
-Redacta una nota de cata de 3-4 frases que sintetice las percepciones del grupo de forma elegante y profesional, como si fuera la descripción oficial del vino basada en opiniones de consumidores reales. Termina con una frase de valoración global.` }];
+      messages = [{ role: "user", content: `Eres un sommelier experto. Redacta una nota de cata colectiva en español basada en las percepciones reales de un grupo de catadores.
 
-    } else if (tipo === "etiqueta") {
-      const { imagen } = req.body;
-      // imagen viene como data URL: "data:image/jpeg;base64,...."
-      const m = imagen && imagen.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
-      if (!m) return res.status(400).json({ error: "Imagen no válida" });
-      const mediaType = m[1];
-      const data = m[2];
+Datos de la cata grupal:
+${cuerpo}
 
-      messages = [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data } },
-          { type: "text", text: `Examina esta etiqueta de vino y extrae sus datos. Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional ni markdown ni explicaciones, con esta estructura exacta:
-
-{"nombre":"...","bodega":"...","anada":"...","zona":"...","do_cl":"...","uvas":[{"v":"...","p":"..."}]}
-
-Reglas:
-- Si un campo no es legible o no aparece en la etiqueta, déjalo como cadena vacía "".
-- "anada" debe ser solo el año (4 dígitos).
-- "uvas" es un array que puede estar vacío [].
-- Cada uva tiene "v" (variedad) y "p" (porcentaje sin el símbolo %).
-- No inventes información que no se vea claramente en la imagen.` }
-        ]
-      }];
+${multi
+  ? `Redacta una nota elegante y profesional de 2-3 frases POR CADA VINO (sepáralas con un salto de línea y el nombre del vino), y cierra con una frase comparativa global del conjunto.`
+  : `Redacta una nota de cata de 3-4 frases que sintetice las percepciones del grupo de forma elegante y profesional, como si fuera la descripción oficial del vino. Termina con una frase de valoración global.`}` }];
 
     } else {
       return res.status(400).json({ error: "Tipo no reconocido." });

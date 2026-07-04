@@ -16,16 +16,24 @@ const TTL_CATA = 60 * 24 * 60 * 60; // 60 días en segundos
 
 // ── Ejecutar comando Redis via body (sin límite de URL) ──────────────────────
 async function redis(...command) {
-  const res = await fetch(URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(command),
-  });
+  if (!URL || !TOKEN) {
+    throw new Error("Faltan variables de entorno UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN en Vercel.");
+  }
+  let res;
+  try {
+    res = await fetch(URL.trim(), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${TOKEN.trim()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(command),
+    });
+  } catch (e) {
+    throw new Error(`No se pudo conectar con Upstash (${command[0]}): ${e.message}`);
+  }
   const data = await res.json();
-  if (data.error) throw new Error(`Redis: ${data.error}`);
+  if (data.error) throw new Error(`Redis (${command[0]}): ${data.error}`);
   return data.result;
 }
 

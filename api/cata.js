@@ -1,22 +1,49 @@
+// api/cata.js — Catas grupales v2 (arquitectura robusta)
+//
+// CAMBIOS CLAVE respecto a v1:
+// 1. Los comandos van en el BODY (POST) — sin límite de longitud de URL.
+//    Antes: /set/key/VALOR_GIGANTE_EN_URL → fallaba con 5+ participantes (URL >8KB).
+// 2. Cada participante se añade con RPUSH atómico a una lista propia.
+//    Antes: leer cata → modificar array → reescribir todo (race condition:
+//    dos envíos simultáneos y uno se perdía).
+// 3. TTL de 60 días en las catas para no llenar el plan gratuito de Upstash.
+// 4. Verificación de errores en TODAS las escrituras (antes fallaban en silencio).
+
 const URL = process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-// Upstash REST API: GET /get/key  |  SET via pipeline
-async function rGet(key) {
-  const res = await fetch(`${URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${TOKEN}` }
+const TTL_CATA = 60 * 24 * 60 * 60; // 60 días en segundos
+
+// ── Ejecutar comando Redis via body (sin límite de URL) ──────────────────────
+async function redis(...command) {
+  const res = await fetch(URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
   });
   const data = await res.json();
-  if (!data.result) return null;
-  try { return JSON.parse(data.result); } catch { return null; }
+  if (data.error) throw new Error(`Redis: ${data.error}`);
+  return data.result;
 }
 
-async function rSet(key, value) {
-  const res = await fetch(`${URL}/set/${encodeURIComponent(key)}/${encodeURIComponent(JSON.stringify(value))}`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${TOKEN}` }
-  });
-  return (await res.json()).result;
+async function getCata(codigo) {
+  const raw = await redis("GET", `cata:${codigo}`);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+async function setCata(codigo, cata) {
+  const ok = await redis("SET", `cata:${codigo}`, JSON.stringify(cata), "EX", TTL_CATA);
+  if (ok !== "OK") throw new Error("No se pudo guardar la cata");
+}
+
+async function getParticipantes(codigo) {
+  const items = await redis("LRANGE", `cata:${codigo}:parts`, 0, -1);
+  if (!Array.isArray(items)) return [];
+  return items.map(i => { try { return JSON.parse(i); } catch { return null; } }).filter(Boolean);
 }
 
 function genCodigo() {
@@ -28,52 +55,66 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { accion } = req.body;
+    const { accion } = req.body || {};
+    const codigo = (req.body?.codigo || "").toUpperCase().trim();
 
+    // ── CREAR ─────────────────────────────────────────────────────────────
     if (accion === "crear") {
-      const codigo = genCodigo();
-      const cata = { codigo, vino: req.body.vino, estado: "abierta", participantes: [] };
-      await rSet(`cata:${codigo}`, cata);
-      // Verify it was saved
-      const check = await rGet(`cata:${codigo}`);
-      if (!check) return res.status(200).json({ ok: false, error: "Error al guardar en base de datos." });
-      return res.status(200).json({ ok: true, codigo });
+      // Generar código evitando colisiones (hasta 5 intentos)
+      let cod = null;
+      for (let i = 0; i < 5; i++) {
+        const candidato = genCodigo();
+        const existe = await redis("EXISTS", `cata:${candidato}`);
+        if (!existe) { cod = candidato; break; }
+      }
+      if (!cod) return res.json({ ok: false, error: "No se pudo generar código. Inténtalo de nuevo." });
+
+      const cata = { codigo: cod, vino: req.body.vino, estado: "abierta", creadaEn: Date.now() };
+      await setCata(cod, cata);
+      return res.json({ ok: true, codigo: cod });
     }
 
+    // ── UNIRSE ────────────────────────────────────────────────────────────
     if (accion === "unirse") {
-      const codigo = (req.body.codigo || "").toUpperCase().trim();
-      const cata = await rGet(`cata:${codigo}`);
-      if (!cata) return res.status(200).json({ ok: false, error: "Código no encontrado. Comprueba que es correcto." });
-      return res.status(200).json({ ok: true, vino: cata.vino, estado: cata.estado });
+      const cata = await getCata(codigo);
+      if (!cata) return res.json({ ok: false, error: "Código no encontrado. Comprueba que es correcto." });
+      return res.json({ ok: true, vino: cata.vino, estado: cata.estado });
     }
 
+    // ── PARTICIPAR (RPUSH atómico — sin race condition, sin límite) ────────
     if (accion === "participar") {
-      const codigo = (req.body.codigo || "").toUpperCase().trim();
-      const cata = await rGet(`cata:${codigo}`);
-      if (!cata) return res.status(200).json({ ok: false, error: "Cata no encontrada." });
-      if (cata.estado === "finalizada") return res.status(200).json({ ok: false, error: "Esta cata ya está finalizada." });
-      if (!Array.isArray(cata.participantes)) cata.participantes = [];
-      cata.participantes.push({ nombre: req.body.nombre || "Anónimo", ficha: req.body.ficha, ts: Date.now() });
-      await rSet(`cata:${codigo}`, cata);
-      return res.status(200).json({ ok: true, total: cata.participantes.length });
+      const cata = await getCata(codigo);
+      if (!cata) return res.json({ ok: false, error: "Cata no encontrada." });
+      if (cata.estado === "finalizada") return res.json({ ok: false, error: "Esta cata ya está finalizada." });
+
+      const participante = {
+        nombre: req.body.nombre || "Anónimo",
+        ficha: req.body.ficha,
+        ts: Date.now(),
+      };
+      const total = await redis("RPUSH", `cata:${codigo}:parts`, JSON.stringify(participante));
+      if (!total) throw new Error("No se pudo registrar la participación");
+      // Renovar TTL de la lista para que expire junto con la cata
+      await redis("EXPIRE", `cata:${codigo}:parts`, TTL_CATA);
+
+      return res.json({ ok: true, total });
     }
 
+    // ── FINALIZAR ─────────────────────────────────────────────────────────
     if (accion === "finalizar") {
-      const codigo = (req.body.codigo || "").toUpperCase().trim();
-      const cata = await rGet(`cata:${codigo}`);
-      if (!cata) return res.status(200).json({ ok: false, error: "Cata no encontrada." });
+      const cata = await getCata(codigo);
+      if (!cata) return res.json({ ok: false, error: "Cata no encontrada." });
       cata.estado = "finalizada";
-      await rSet(`cata:${codigo}`, cata);
-      return res.status(200).json({ ok: true });
+      await setCata(codigo, cata);
+      return res.json({ ok: true });
     }
 
+    // ── RESULTADOS ────────────────────────────────────────────────────────
     if (accion === "resultados") {
-      const codigo = (req.body.codigo || "").toUpperCase().trim();
-      const cata = await rGet(`cata:${codigo}`);
-      if (!cata) return res.status(200).json({ ok: false, error: "Cata no encontrada." });
+      const cata = await getCata(codigo);
+      if (!cata) return res.json({ ok: false, error: "Cata no encontrada." });
 
-      const parts = Array.isArray(cata.participantes) ? cata.participantes : [];
-
+      const parts = await getParticipantes(codigo);
       const punts = parts.map(p => Number(p.ficha?.puntuacion)).filter(v => !isNaN(v) && v > 0);
       const punt_media = punts.length ? Math.round(punts.reduce((a, b) => a + b, 0) / punts.length) : null;
 
@@ -85,7 +126,8 @@ export default async function handler(req, res) {
             if (t) mapa[t] = (mapa[t] || 0) + 1;
           });
         });
-        return Object.entries(mapa).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([texto, count]) => ({ texto, count }));
+        return Object.entries(mapa).sort((a, b) => b[1] - a[1]).slice(0, 6)
+          .map(([texto, count]) => ({ texto, count }));
       };
 
       const coloresMapa = {};
@@ -97,19 +139,51 @@ export default async function handler(req, res) {
       const resumen = {
         total: parts.length,
         punt_media,
-        colores: Object.entries(coloresMapa).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([texto, count]) => ({ texto, count })),
+        colores: Object.entries(coloresMapa).sort((a, b) => b[1] - a[1]).slice(0, 4)
+          .map(([texto, count]) => ({ texto, count })),
         aromas: contar("arp"),
         aromas_agitada: contar("ara"),
         sabores: contar("sab"),
-        participantes: parts.map(p => ({ nombre: p.nombre, puntuacion: p.ficha?.puntuacion }))
+        participantes: parts.map(p => ({ nombre: p.nombre, puntuacion: p.ficha?.puntuacion })),
+        resumen_ia: cata.resumen_ia || null,
       };
 
-      return res.status(200).json({ ok: true, vino: cata.vino, estado: cata.estado, resumen });
+      return res.json({ ok: true, vino: cata.vino, estado: cata.estado, resumen });
     }
 
-    return res.status(200).json({ ok: false, error: "Acción no reconocida." });
+    // ── GUARDAR RESUMEN IA + ARCHIVAR ─────────────────────────────────────
+    if (accion === "guardar_resumen") {
+      const { resumen_ia, resumen, vino } = req.body;
+      const cata = await getCata(codigo);
+      if (!cata) return res.json({ ok: false, error: "Cata no encontrada." });
+
+      cata.resumen_ia = resumen_ia;
+      await setCata(codigo, cata);
+
+      const registro = {
+        codigo, vino, resumen_ia,
+        punt_media: resumen?.punt_media ?? null,
+        total: resumen?.total ?? null,
+        fecha: new Date().toLocaleDateString("es-ES"),
+        ts: Date.now(),
+      };
+      await redis("LPUSH", "catas_finalizadas", JSON.stringify(registro));
+      await redis("LTRIM", "catas_finalizadas", 0, 49); // conservar solo las 50 últimas
+
+      return res.json({ ok: true });
+    }
+
+    // ── LISTAR CATAS FINALIZADAS ──────────────────────────────────────────
+    if (accion === "listar") {
+      const items = await redis("LRANGE", "catas_finalizadas", 0, 19);
+      const catas = (items || []).map(i => { try { return JSON.parse(i); } catch { return null; } }).filter(Boolean);
+      return res.json({ ok: true, catas });
+    }
+
+    return res.json({ ok: false, error: "Acción no reconocida." });
 
   } catch (err) {
+    console.error("cata.js error:", err);
     return res.status(200).json({ ok: false, error: "Error interno: " + err.message });
   }
 }

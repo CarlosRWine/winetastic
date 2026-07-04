@@ -1,85 +1,107 @@
-// api/fichas.js — CRUD de fichas por usuario (Upstash Redis)
+// api/fichas.js — CRUD de fichas por usuario v2 (robusto)
+//
+// FIX CRÍTICO: antes el SET metía todo el array de fichas en la URL.
+// Con ~10-15 fichas guardadas la URL superaba el límite (~8KB) y el
+// guardado fallaba EN SILENCIO → "las fichas desaparecen a largo plazo".
+// Ahora los comandos van en el body (sin límite) y toda escritura se verifica.
 
-const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const URL = process.env.UPSTASH_REDIS_REST_URL;
+const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-async function redisGet(key) {
-  const r = await fetch(
-    `${REDIS_URL}/get/${encodeURIComponent(key)}`,
-    { headers: { Authorization: `Bearer ${REDIS_TOKEN}` } }
-  );
-  const data = await r.json();
-  if (!data.result) return [];
-  try { return JSON.parse(data.result); } catch { return []; }
+async function redis(...command) {
+  const res = await fetch(URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(`Redis: ${data.error}`);
+  return data.result;
 }
 
-async function redisSet(key, value) {
-  // Upstash REST API: SET via GET request with value in URL
-  const encoded = encodeURIComponent(JSON.stringify(value));
-  await fetch(
-    `${REDIS_URL}/set/${encodeURIComponent(key)}/${encoded}`,
-    { headers: { Authorization: `Bearer ${REDIS_TOKEN}` } }
-  );
+async function getFichas(key) {
+  const raw = await redis("GET", key);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
 }
+
+async function setFichas(key, fichas) {
+  const ok = await redis("SET", key, JSON.stringify(fichas));
+  if (ok !== "OK") throw new Error("No se pudo guardar en la nube");
+}
+
+const genId = () => `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { accion, userId, ficha, fichaId, fichas: fichaBulk } = req.body || {};
-  if (!userId) return res.status(400).json({ error: "userId requerido" });
+  if (!userId || typeof userId !== "string") {
+    return res.status(400).json({ error: "userId requerido" });
+  }
 
   const KEY = `fichas:${userId}`;
 
   try {
     if (accion === "listar") {
-      const fichas = await redisGet(KEY);
+      const fichas = await getFichas(KEY);
       return res.json({ ok: true, fichas });
     }
 
     if (accion === "guardar") {
-      const fichas = await redisGet(KEY);
+      const fichas = await getFichas(KEY);
       const nueva = {
         ...ficha,
-        id: ficha.id || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        fecha: ficha.fecha || new Date().toLocaleDateString("es-ES"),
+        id: ficha?.id || genId(),
+        fecha: ficha?.fecha || new Date().toLocaleDateString("es-ES"),
       };
       fichas.push(nueva);
-      await redisSet(KEY, fichas);
+      await setFichas(KEY, fichas);
       return res.json({ ok: true, ficha: nueva });
     }
 
     if (accion === "actualizar") {
-      const fichas = await redisGet(KEY);
-      const idx = fichas.findIndex(f => f.id === fichaId);
-      if (idx >= 0) fichas[idx] = { ...ficha, id: fichaId };
-      await redisSet(KEY, fichas);
+      const fichas = await getFichas(KEY);
+      const idx = fichas.findIndex(f => String(f.id) === String(fichaId));
+      if (idx === -1) return res.json({ ok: false, error: "Ficha no encontrada" });
+      fichas[idx] = { ...ficha, id: fichas[idx].id, fecha: fichas[idx].fecha };
+      await setFichas(KEY, fichas);
       return res.json({ ok: true });
     }
 
     if (accion === "borrar") {
-      const fichas = await redisGet(KEY);
-      await redisSet(KEY, fichas.filter(f => f.id !== fichaId));
-      return res.json({ ok: true });
+      const fichas = await getFichas(KEY);
+      const restantes = fichas.filter(f => String(f.id) !== String(fichaId));
+      await setFichas(KEY, restantes);
+      return res.json({ ok: true, total: restantes.length });
     }
 
     if (accion === "migrar") {
-      const existing = await redisGet(KEY);
-      const existingIds = new Set(existing.map(f => f.id?.toString()));
-      const nuevas = (fichaBulk || [])
-        .filter(f => !existingIds.has(f.id?.toString()))
-        .map(f => ({ ...f, id: f.id || `${Date.now()}_${Math.random().toString(36).slice(2)}` }));
-      const merged = [...existing, ...nuevas];
-      await redisSet(KEY, merged);
-      return res.json({ ok: true, migradas: nuevas.length, total: merged.length });
+      const existing = await getFichas(KEY);
+      const existingIds = new Set(existing.map(f => String(f.id)));
+      const nuevas = (Array.isArray(fichaBulk) ? fichaBulk : [])
+        .filter(f => !existingIds.has(String(f.id)))
+        .map(f => ({ ...f, id: f.id || genId() }));
+      if (nuevas.length > 0) {
+        await setFichas(KEY, [...existing, ...nuevas]);
+      }
+      return res.json({ ok: true, migradas: nuevas.length, total: existing.length + nuevas.length });
     }
 
     return res.status(400).json({ error: "Acción desconocida" });
 
   } catch (err) {
     console.error("fichas.js error:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ ok: false, error: err.message });
   }
 }

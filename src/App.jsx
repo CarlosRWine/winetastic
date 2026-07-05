@@ -34,12 +34,25 @@ const F = { script: "'Cormorant Garamond', Georgia, serif", serif: "'DM Sans', s
 
 // ── NIVELES DE CATADOR ──────────────────────────────────────────────────────
 const NIVELES = [
-  { min: 0,    nombre: "Principiante",    icono: "🌱" },
-  { min: 100,  nombre: "Aficionado",      icono: "🍇" },
-  { min: 300,  nombre: "Catador",         icono: "🍷" },
-  { min: 750,  nombre: "Experto Catador", icono: "🥇" },
-  { min: 1500, nombre: "Gran Reserva",    icono: "👑" },
+  { min: 0,    nombre: "Principiante",    icono: "I" },
+  { min: 100,  nombre: "Aficionado",      icono: "II" },
+  { min: 300,  nombre: "Catador",         icono: "III" },
+  { min: 750,  nombre: "Experto Catador", icono: "IV" },
+  { min: 1500, nombre: "Gran Reserva",    icono: "V" },
 ];
+
+// Medallón de nivel (estilo etiqueta de vino)
+const Medalla = ({ num, size = 22, invertida = false }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
+    width: size, height: size, borderRadius: "50%", flexShrink: 0,
+    border: `1.5px solid ${invertida ? "rgba(255,255,255,0.7)" : C.gold}`,
+    background: invertida ? "rgba(255,255,255,0.12)" : `${C.gold}18`,
+    color: invertida ? "#fff" : C.goldDark,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: size * 0.48, fontWeight: 700, lineHeight: 1 }}>
+    {num}
+  </span>
+);
 const nivelDe = (puntos) => {
   let idx = 0;
   NIVELES.forEach((n, i) => { if (puntos >= n.min) idx = i; });
@@ -97,8 +110,9 @@ const Section = ({ title, icon, children }) => (
     marginBottom: 20, overflow: "hidden", boxShadow: "0 2px 12px rgba(114,40,56,0.06)" }}>
     <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
       padding: "13px 20px", display: "flex", alignItems: "center", gap: 8 }}>
-      {icon && <span style={{ fontSize: 15 }}>{icon}</span>}
-      <h2 style={{ margin: 0, color: "#FDF7F0", fontSize: 14, fontFamily: F.script, fontWeight: 700 }}>{title}</h2>
+      <span style={{ color: C.gold, fontSize: 9, lineHeight: 1 }}>◆</span>
+      <h2 style={{ margin: 0, color: "#FDF7F0", fontSize: 14, fontFamily: F.script, fontWeight: 700,
+        letterSpacing: 0.5 }}>{title}</h2>
     </div>
     <div style={{ padding: "18px 20px" }}>{children}</div>
   </div>
@@ -692,7 +706,7 @@ const MisFichasView = ({ fichas, setFichas, onEdit, userId }) => {
             fontSize: 14, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>✏️ Editar</button>
         <button onClick={() => borrar(detalle.id)}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
-            borderRadius: 9, padding: "13px 20px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>🗑 Borrar</button>
+            borderRadius: 9, padding: "13px 20px", fontSize: 14, cursor: "pointer", fontFamily: F.serif }}>✕ Borrar</button>
       </div>
       <button onClick={async () => {
           try {
@@ -878,7 +892,7 @@ const FichaGrupalForm = ({ vino, onEnviar, onCancelar, loading }) => {
         style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
           color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
           fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 40 }}>
-        {loading ? "Enviando..." : "🍷 Enviar esta ficha"}
+        {loading ? "Enviando..." : "Enviar esta ficha →"}
       </button>
     </div>
   );
@@ -1236,7 +1250,7 @@ const FichaRecuerdo = ({ codigo, data, resumenIA, miNombre, onCerrar }) => {
                 style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
                   color: "#FDF7F0", border: "none", borderRadius: 10, padding: "15px",
                   fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-                ⬇ Guardar imagen
+                Guardar imagen
               </button>
               <p style={{ fontSize: 11, color: C.muted, fontFamily: F.serif,
                 textAlign: "center", margin: 0, fontStyle: "italic" }}>
@@ -1415,7 +1429,7 @@ const ResultadosMultiView = ({ codigo, onVolver, esAdmin, miNombre }) => {
           style={{ width: "100%", background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
             color: C.text, border: "none", borderRadius: 10, padding: "14px",
             fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 16 }}>
-          {genIA ? "Generando..." : "✨ Generar Nota de Cata con IA"}
+          {genIA ? "Generando..." : "✦ Generar Nota de Cata con IA"}
         </button>
       )}
 
@@ -1423,7 +1437,7 @@ const ResultadosMultiView = ({ codigo, onVolver, esAdmin, miNombre }) => {
         style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
           color: "#FDF7F0", border: "none", borderRadius: 10, padding: "15px",
           fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 12 }}>
-        🖼 Crear Ficha Recuerdo
+        Crear Ficha Recuerdo
       </button>
 
       <button onClick={onVolver}
@@ -1568,7 +1582,7 @@ const AdminCataView = ({ onVolver, sesion }) => {
           style={{ flex: 1, background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
             color: "#FDF7F0", border: "none", borderRadius: 9, padding: "15px",
             fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          {loading ? "Creando..." : "🥂 Crear Cata"}
+          {loading ? "Creando..." : "Crear Cata →"}
         </button>
         <button onClick={onVolver}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
@@ -1597,7 +1611,7 @@ const AdminCataView = ({ onVolver, sesion }) => {
           style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
             color: "#FDF7F0", border: "none", borderRadius: 9, padding: "10px 24px",
             fontSize: 13, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          {copiado ? "✓ Copiado" : "📋 Copiar código"}
+          {copiado ? "✓ Copiado" : "Copiar código"}
         </button>
       </div>
 
@@ -1648,13 +1662,13 @@ const AdminCataView = ({ onVolver, sesion }) => {
           style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
             color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
             fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          🍷 Catar yo también
+          Catar yo también
         </button>
         <button onClick={finalizar} disabled={loading}
           style={{ background: "none", color: C.burgundy, border: `2px solid ${C.burgundy}`,
             borderRadius: 9, padding: "13px", fontSize: 14, cursor: "pointer",
             fontFamily: F.serif, fontWeight: 600 }}>
-          {loading ? "Cargando..." : "🏁 Finalizar cata y ver resultados"}
+          {loading ? "Cargando..." : "Finalizar cata y ver resultados"}
         </button>
         <button onClick={onVolver}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
@@ -1802,7 +1816,7 @@ const InvitadoCataView = ({ onVolver, sesion }) => {
             background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
             color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
             fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-          {loading ? "Entrando..." : "🔑 Entrar a la Cata"}
+          {loading ? "Entrando..." : "Entrar a la Cata →"}
         </button>
       </div>
       <button onClick={onVolver} style={{ background: "none", color: C.muted,
@@ -1828,7 +1842,7 @@ const InvitadoCataView = ({ onVolver, sesion }) => {
             color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
             fontSize: 15, cursor: enviadas.length > 0 ? "pointer" : "default",
             fontFamily: F.script, fontWeight: 700 }}>
-          {loading ? "Enviando..." : "🏁 He terminado mi cata"}
+          {loading ? "Enviando..." : "He terminado mi cata"}
         </button>
         <button onClick={() => { if (window.confirm("¿Abandonar la cata?")) onVolver(); }}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
@@ -2475,7 +2489,7 @@ const EventosView = () => {
 const GUIA_CATA = {
   identificacion: {
     titulo: "Antes de empezar",
-    icono: "🍾",
+    icono: "◆",
     color: "#8B1A2E",
     pasos: [
       "Sirve unos 6-8 cl de vino en una copa de cristal transparente con pie — nunca la llenes más de 1/3.",
@@ -2486,7 +2500,7 @@ const GUIA_CATA = {
   },
   visual: {
     titulo: "Fase Visual",
-    icono: "👁",
+    icono: "◆",
     color: "#6B4C2A",
     pasos: [
       "Busca un fondo blanco: una servilleta, un folio o la pared. La luz natural o blanca es la ideal.",
@@ -2497,7 +2511,7 @@ const GUIA_CATA = {
   },
   olfativo: {
     titulo: "Fase Olfativa",
-    icono: "👃",
+    icono: "◆",
     color: "#2D5A1B",
     pasos: [
       "Primera nariz: sin agitar, acerca la copa a la nariz e inhala suavemente. Estos son los aromas más volátiles y delicados.",
@@ -2508,7 +2522,7 @@ const GUIA_CATA = {
   },
   gustativo: {
     titulo: "Fase Gustativa",
-    icono: "👅",
+    icono: "◆",
     color: "#1A3A5C",
     pasos: [
       "Toma un pequeño sorbo y deja que el vino cubra toda la boca. No tragues inmediatamente.",
@@ -2519,7 +2533,7 @@ const GUIA_CATA = {
   },
   puntuacion: {
     titulo: "Puntuación Final",
-    icono: "🏅",
+    icono: "◆",
     color: "#8B1A2E",
     pasos: [
       "Ahora que has pasado por las tres fases, puedes emitir tu valoración global.",
@@ -2634,7 +2648,7 @@ const VentajasView = ({ perfil }) => {
         <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
           letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>Tu nivel de catador</div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <span style={{ fontSize: 36 }}>{perfil?.icono || "🌱"}</span>
+          <Medalla num={perfil?.icono || "I"} size={52} invertida />
           <div>
             <div style={{ color: "#fff", fontFamily: F.script, fontSize: 26, fontWeight: 700 }}>
               {perfil?.nombre || "Principiante"}
@@ -2652,12 +2666,12 @@ const VentajasView = ({ perfil }) => {
             </div>
             <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11,
               fontFamily: F.serif, marginTop: 8 }}>
-              {perfil.siguiente.min - perfil.puntos} puntos para {perfil.siguiente.icono} {perfil.siguiente.nombre}
+              {perfil.siguiente.min - perfil.puntos} puntos para {perfil.siguiente.nombre}
             </div>
           </>
         ) : (
           <div style={{ color: C.gold, fontSize: 12, fontFamily: F.serif, fontStyle: "italic" }}>
-            Has alcanzado el máximo nivel. Chapeau. 👑
+            Has alcanzado el máximo nivel. Chapeau.
           </div>
         )}
       </div>
@@ -2682,7 +2696,7 @@ const VentajasView = ({ perfil }) => {
       ) : visibles.length === 0 ? (
         <div style={{ background: C.card, border: `1px dashed ${C.border}`, borderRadius: 14,
           padding: "28px 20px", textAlign: "center", marginBottom: 20 }}>
-          <div style={{ fontSize: 30, marginBottom: 8 }}>🎁</div>
+          <div style={{ color: C.gold, fontSize: 24, marginBottom: 8 }}>◆</div>
           <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: 0, fontStyle: "italic" }}>
             Aún no hay ventajas para tu nivel.<br/>Sigue catando: pronto llegarán bonos y descuentos.
           </p>
@@ -2698,7 +2712,7 @@ const VentajasView = ({ perfil }) => {
             {v.nivelMin > 0 && (
               <span style={{ background: C.cream, borderRadius: 12, padding: "3px 10px",
                 fontSize: 10, color: C.goldDark, fontFamily: F.serif, whiteSpace: "nowrap" }}>
-                {NIVELES[v.nivelMin].icono} {NIVELES[v.nivelMin].nombre}+
+                {NIVELES[v.nivelMin].nombre}+
               </span>
             )}
           </div>
@@ -2729,11 +2743,11 @@ const VentajasView = ({ perfil }) => {
             <div key={v.id} style={{ background: C.cream, border: `1px solid ${C.border}`,
               borderRadius: 14, padding: "14px 18px", marginBottom: 10, opacity: 0.7 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>🔒</span>
+                <Medalla num={NIVELES[v.nivelMin]?.icono || "?"} size={26} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: F.script, fontSize: 15, fontWeight: 700, color: C.muted }}>{v.titulo}</div>
                   <div style={{ fontSize: 11, color: C.goldDark, fontFamily: F.serif }}>
-                    Requiere nivel {NIVELES[v.nivelMin]?.icono} {NIVELES[v.nivelMin]?.nombre}
+                    Requiere nivel {NIVELES[v.nivelMin]?.nombre}
                   </div>
                 </div>
               </div>
@@ -2757,6 +2771,7 @@ const AdminPanelView = ({ onVolver }) => {
   const [loading, setLoading] = useState(false);
   const [nueva, setNueva] = useState({ titulo: "", descripcion: "", codigo: "", tienda: "", caducidad: "", nivelMin: 0 });
   const [creando, setCreando] = useState(false);
+  const [usuarioSel, setUsuarioSel] = useState(null);
 
   const apiAdmin = async (body) => {
     try {
@@ -2833,7 +2848,7 @@ const AdminPanelView = ({ onVolver }) => {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
         <h1 style={{ fontFamily: F.script, fontSize: 24, fontWeight: 700, color: C.burgundy, margin: 0 }}>
-          ⚙ Panel Winetastic
+          Panel Winetastic
         </h1>
         <button onClick={onVolver} style={{ background: "none", border: `1px solid ${C.border}`,
           borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12,
@@ -2855,16 +2870,39 @@ const AdminPanelView = ({ onVolver }) => {
       {/* ── STATS ── */}
       {tab === "stats" && stats && (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-            {[["Usuarios", stats.totalUsuarios], ["Fichas totales", stats.totalFichas]].map(([l, v]) => (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {[["Usuarios", stats.totalUsuarios], ["Fichas", stats.totalFichas],
+              ["Media global", stats.mediaGlobal ? `${stats.mediaGlobal}` : "—"]].map(([l, v]) => (
               <div key={l} style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
-                borderRadius: 14, padding: "18px", textAlign: "center" }}>
-                <div style={{ color: "#fff", fontFamily: F.script, fontSize: 34, fontWeight: 700 }}>{v}</div>
-                <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
+                borderRadius: 14, padding: "16px 10px", textAlign: "center" }}>
+                <div style={{ color: "#fff", fontFamily: F.script, fontSize: 30, fontWeight: 700 }}>{v}</div>
+                <div style={{ color: C.gold, fontSize: 9, fontFamily: F.serif,
                   letterSpacing: 2, textTransform: "uppercase" }}>{l}</div>
               </div>
             ))}
           </div>
+
+          {/* Top uvas y zonas de la comunidad */}
+          {[["Uvas más catadas", stats.topUvas], ["Zonas más catadas", stats.topZonas]].map(([titulo, items]) =>
+            items?.length > 0 && (
+              <div key={titulo} style={{ background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
+                <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+                  color: C.muted, fontFamily: F.serif, marginBottom: 10 }}>{titulo}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {items.map((it, i) => (
+                    <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6,
+                      background: C.cream, border: `1px solid ${C.border}`, borderRadius: 16,
+                      padding: "4px 12px", fontSize: 12, fontFamily: F.serif, color: C.text }}>
+                      {it.texto}
+                      <span style={{ background: C.burgundy, color: "#fff", borderRadius: 10,
+                        padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>{it.count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          )}
 
           {/* Distribución de niveles */}
           <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
@@ -2873,7 +2911,7 @@ const AdminPanelView = ({ onVolver }) => {
               color: C.muted, fontFamily: F.serif, marginBottom: 10 }}>Distribución por nivel</div>
             {NIVELES.map(n => (
               <div key={n.nombre} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
-                <span style={{ width: 24, fontSize: 14 }}>{n.icono}</span>
+                <Medalla num={n.icono} size={22} />
                 <span style={{ flex: 1, fontFamily: F.serif, fontSize: 13, color: C.text }}>{n.nombre}</span>
                 <span style={{ fontFamily: F.script, fontSize: 15, fontWeight: 700, color: C.burgundy }}>
                   {stats.distribucion[n.nombre] || 0}
@@ -2887,17 +2925,76 @@ const AdminPanelView = ({ onVolver }) => {
             padding: "14px 16px", marginBottom: 40 }}>
             <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
               color: C.muted, fontFamily: F.serif, marginBottom: 10 }}>Usuarios ({stats.usuarios.length})</div>
+            {/* Cabecera de tabla */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0 8px",
+              borderBottom: `2px solid ${C.border}` }}>
+              <span style={{ width: 22 }} />
+              <span style={{ flex: 1, fontSize: 9, letterSpacing: 1, textTransform: "uppercase",
+                color: C.muted, fontFamily: F.serif }}>Usuario</span>
+              <span style={{ width: 44, textAlign: "center", fontSize: 9, letterSpacing: 1,
+                textTransform: "uppercase", color: C.muted, fontFamily: F.serif }}>Fichas</span>
+              <span style={{ width: 44, textAlign: "center", fontSize: 9, letterSpacing: 1,
+                textTransform: "uppercase", color: C.muted, fontFamily: F.serif }}>Media</span>
+              <span style={{ width: 54, textAlign: "right", fontSize: 9, letterSpacing: 1,
+                textTransform: "uppercase", color: C.muted, fontFamily: F.serif }}>Puntos</span>
+            </div>
             {stats.usuarios.map((u, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0",
-                borderBottom: i < stats.usuarios.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                <span style={{ fontFamily: F.serif, fontSize: 12, color: C.muted, width: 22 }}>{i + 1}.</span>
-                <span style={{ flex: 1, fontFamily: F.serif, fontSize: 13, color: C.text }}>
-                  {u.nombre !== "—" ? u.nombre : u.id}
-                </span>
-                <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>{u.fichas} fichas</span>
-                <span style={{ fontFamily: F.script, fontSize: 13, fontWeight: 700, color: C.burgundy, width: 60, textAlign: "right" }}>
-                  {u.puntos} pts
-                </span>
+              <div key={i}>
+                <div onClick={() => setUsuarioSel(usuarioSel === i ? null : i)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0",
+                    cursor: "pointer",
+                    borderBottom: usuarioSel === i ? "none" : `1px solid ${C.border}`,
+                    background: usuarioSel === i ? `${C.gold}12` : "none" }}>
+                  <Medalla num={u.nivel === "Principiante" ? "I" : u.nivel === "Aficionado" ? "II" :
+                    u.nivel === "Catador" ? "III" : u.nivel === "Experto Catador" ? "IV" : "V"} size={22} />
+                  <span style={{ flex: 1, fontFamily: F.serif, fontSize: 13, color: C.text }}>
+                    {u.nombre !== "—" ? u.nombre : u.id}
+                  </span>
+                  <span style={{ width: 44, textAlign: "center", fontSize: 13,
+                    fontFamily: F.serif, color: C.text }}>{u.fichas}</span>
+                  <span style={{ width: 44, textAlign: "center", fontFamily: F.script,
+                    fontSize: 14, fontWeight: 700, color: u.media ? C.goldDark : C.border }}>
+                    {u.media ?? "—"}</span>
+                  <span style={{ width: 54, textAlign: "right", fontFamily: F.script,
+                    fontSize: 14, fontWeight: 700, color: C.burgundy }}>{u.puntos}</span>
+                </div>
+
+                {/* Detalle expandible */}
+                {usuarioSel === i && (
+                  <div style={{ background: `${C.gold}12`, borderBottom: `1px solid ${C.border}`,
+                    padding: "4px 12px 14px 44px" }}>
+                    <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, marginBottom: 6 }}>
+                      Nivel <strong>{u.nivel}</strong>
+                    </div>
+                    {u.uvas?.length > 0 && (
+                      <div style={{ marginBottom: 6 }}>
+                        <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase",
+                          color: C.muted, fontFamily: F.serif }}>Uvas: </span>
+                        {u.uvas.map((x, j) => (
+                          <span key={j} style={{ fontSize: 12, fontFamily: F.serif, color: C.text }}>
+                            {x.texto} ({x.count}){j < u.uvas.length - 1 ? " · " : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {u.zonas?.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase",
+                          color: C.muted, fontFamily: F.serif }}>Zonas: </span>
+                        {u.zonas.map((x, j) => (
+                          <span key={j} style={{ fontSize: 12, fontFamily: F.serif, color: C.text }}>
+                            {x.texto} ({x.count}){j < u.zonas.length - 1 ? " · " : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {!u.uvas?.length && !u.zonas?.length && (
+                      <div style={{ fontSize: 12, color: C.muted, fontFamily: F.serif, fontStyle: "italic" }}>
+                        Sin datos de uvas o zonas todavía.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -2938,7 +3035,7 @@ const AdminPanelView = ({ onVolver }) => {
               <Field label="Nivel mínimo">
                 <select value={nueva.nivelMin} onChange={e => setNueva(n => ({ ...n, nivelMin: +e.target.value }))}
                   style={iBase}>
-                  {NIVELES.map((n, i) => <option key={i} value={i}>{n.icono} {n.nombre}{i === 0 ? " (todos)" : "+"}</option>)}
+                  {NIVELES.map((n, i) => <option key={i} value={i}>{n.nombre}{i === 0 ? " (todos)" : "+"}</option>)}
                 </select>
               </Field>
             </div>
@@ -2947,7 +3044,7 @@ const AdminPanelView = ({ onVolver }) => {
               style={{ width: "100%", background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
                 color: C.text, border: "none", borderRadius: 9, padding: "13px",
                 fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
-              {creando ? "Publicando..." : "🚀 Publicar ventaja"}
+              {creando ? "Publicando..." : "Publicar ventaja →"}
             </button>
           </div>
 
@@ -2969,14 +3066,14 @@ const AdminPanelView = ({ onVolver }) => {
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.script, fontSize: 15, fontWeight: 700, color: C.text }}>{v.titulo}</div>
                 <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>
-                  {NIVELES[v.nivelMin || 0].icono} {NIVELES[v.nivelMin || 0].nombre}{(v.nivelMin || 0) > 0 ? "+" : ""}
+                  {NIVELES[v.nivelMin || 0].nombre}{(v.nivelMin || 0) > 0 ? "+" : ""}
                   {v.codigo ? ` · ${v.codigo}` : ""}{v.caducidad ? ` · hasta ${v.caducidad}` : ""}
                 </div>
               </div>
               <button onClick={() => borrarVentaja(v.id)}
                 style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8,
                   padding: "6px 10px", cursor: "pointer", color: "#c0392b", fontSize: 12 }}>
-                🗑
+                ✕
               </button>
             </div>
           ))}
@@ -3085,7 +3182,7 @@ function WinetasticApp() {
           return;
         }
       }
-      setToast(isEdit ? "✦ ¡Ficha actualizada! 🍷" : "✦ ¡Ficha guardada! 🍷");
+      setToast(isEdit ? "✦ ¡Ficha actualizada!" : "✦ ¡Ficha guardada!");
       setTimeout(() => setToast(""), 3000);
       setFichas(prev => { saveLocal(prev); return prev; });
       setForm(newForm());
@@ -3126,7 +3223,7 @@ function WinetasticApp() {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setView("admin")} title="Panel de administración"
                 style={{ background: "none", border: "none", cursor: "pointer",
-                  fontSize: 16, color: C.muted, padding: "2px 4px" }}>
+                  fontSize: 13, color: C.border, padding: "2px 4px" }}>
                 ⚙
               </button>
               <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>
@@ -3178,7 +3275,7 @@ function WinetasticApp() {
                       border: "1px solid rgba(255,255,255,0.3)", borderRadius: 20,
                       padding: "5px 14px", cursor: "pointer", display: "inline-flex",
                       alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 13 }}>{perfil.icono}</span>
+                    <Medalla num={perfil.icono} size={18} invertida />
                     <span style={{ color: "#fff", fontSize: 12, fontFamily: F.serif, fontWeight: 600 }}>
                       {perfil.nombre} · {perfil.puntos} pts
                     </span>
@@ -3256,7 +3353,7 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(50,15,10,0.55) 0%, rgba(50,15,10,0.82) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>🥂</div>
+                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.85 }}>❖</div>
                   <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600,
                     color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Cata Grupal</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Administra o únete</div>
@@ -3276,7 +3373,7 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(74,13,26,0.55) 0%, rgba(74,13,26,0.82) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.9 }}>🗓</div>
+                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.9 }}>✎</div>
                   <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600,
                     color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Organiza tu Plan</div>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Crea tu experiencia Winetastic</div>
@@ -3295,7 +3392,7 @@ function WinetasticApp() {
                 <div style={{ position: "absolute", inset: 0,
                   background: "linear-gradient(160deg, rgba(10,10,10,0.45) 0%, rgba(10,10,10,0.78) 100%)" }} />
                 <div style={{ position: "relative", padding: "18px 16px", textAlign: "left" }}>
-                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.9 }}>🥂</div>
+                  <div style={{ fontSize: 20, marginBottom: 10, color: "#fff", opacity: 0.9 }}>◈</div>
                   <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600,
                     color: "#fff", marginBottom: 3, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>Eventos Winetastic</div>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontFamily: F.serif }}>Próximas experiencias</div>
@@ -3386,7 +3483,7 @@ function WinetasticApp() {
               borderBottom: "3px solid transparent" }}>
             ←
           </button>
-          {[["nueva", "✏️ Nueva Cata"], ["fichas", "📋 Mis Fichas"], ["recomienda", "🍾 Recomiéndame"], ["eventos", "📅 Eventos"], ["ventajas", "🎁 Ventajas"]].map(([v, l]) => (
+          {[["nueva", "Nueva Cata"], ["fichas", "Mis Fichas"], ["recomienda", "Recomiéndame"], ["eventos", "Eventos"], ["ventajas", "Ventajas"]].map(([v, l]) => (
             <button key={v} onClick={() => setView(v)}
               style={{ flex: 1, padding: "14px 6px", border: "none", cursor: "pointer",
                 fontFamily: F.serif, fontWeight: 700, fontSize: 12,
@@ -3443,7 +3540,7 @@ function WinetasticApp() {
         {view === "nueva" && (
           <>
             <h1 style={{ fontFamily: F.script, fontSize: 30, fontWeight: 700, color: C.burgundy, margin: "0 0 4px" }}>
-              {form.id ? "✏️ Editando Ficha" : "Nueva Ficha de Cata"}
+              {form.id ? "Editando Ficha" : "Nueva Ficha de Cata"}
             </h1>
             <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 20px" }}>
               Registra todos los detalles de tu degustación
@@ -3457,7 +3554,7 @@ function WinetasticApp() {
                     color: "#fff", border: "none", borderRadius: 14, padding: "20px 16px",
                     cursor: "pointer", textAlign: "left",
                     boxShadow: `0 4px 16px ${C.burgundy}30` }}>
-                  <div style={{ fontSize: 22, marginBottom: 10 }}>🎓</div>
+                  <div style={{ fontSize: 18, marginBottom: 10, color: C.gold }}>◆</div>
                   <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, marginBottom: 4 }}>
                     Modo Guiado
                   </div>
@@ -3470,7 +3567,7 @@ function WinetasticApp() {
                     border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 16px",
                     cursor: "pointer", textAlign: "left",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
-                  <div style={{ fontSize: 22, marginBottom: 10, color: C.burgundy }}>📋</div>
+                  <div style={{ fontSize: 18, marginBottom: 10, color: C.burgundy }}>◇</div>
                   <div style={{ fontFamily: F.script, fontSize: 17, fontWeight: 600, marginBottom: 4 }}>
                     Modo Experto
                   </div>
@@ -3506,7 +3603,7 @@ function WinetasticApp() {
                   borderRadius: 9, padding: "7px 14px", cursor: "pointer",
                   fontSize: 11, color: C.burgundy, fontFamily: F.serif,
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                ✦ Ver consejos para esta fase
               </button>
             )}
             <Section title="Identificación del Vino" icon="🍾">
@@ -3577,7 +3674,7 @@ function WinetasticApp() {
                   borderRadius: 9, padding: "7px 14px", cursor: "pointer",
                   fontSize: 11, color: C.burgundy, fontFamily: F.serif,
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                ✦ Ver consejos para esta fase
               </button>
             )}
             <Section title="Análisis Visual" icon="👁">
@@ -3601,7 +3698,7 @@ function WinetasticApp() {
                   borderRadius: 9, padding: "7px 14px", cursor: "pointer",
                   fontSize: 11, color: C.burgundy, fontFamily: F.serif,
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                ✦ Ver consejos para esta fase
               </button>
             )}
             <Section title="Análisis Olfativo" icon="👃">
@@ -3626,7 +3723,7 @@ function WinetasticApp() {
                   borderRadius: 9, padding: "7px 14px", cursor: "pointer",
                   fontSize: 11, color: C.burgundy, fontFamily: F.serif,
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                ✦ Ver consejos para esta fase
               </button>
             )}
             <Section title="Análisis Gustativo" icon="👅">
@@ -3661,7 +3758,7 @@ function WinetasticApp() {
                   borderRadius: 9, padding: "7px 14px", cursor: "pointer",
                   fontSize: 11, color: C.burgundy, fontFamily: F.serif,
                   marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                🎓 Ver consejos para esta fase
+                ✦ Ver consejos para esta fase
               </button>
             )}
             <Section title="Puntuación Final" icon="🏅">

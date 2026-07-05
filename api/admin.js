@@ -66,17 +66,48 @@ export default async function handler(req, res) {
       ]);
       const resultados = await redisPipeline(comandos);
 
+      // Helpers de agregación
+      const top = (mapa, n = 5) => Object.entries(mapa)
+        .sort((a, b) => b[1] - a[1]).slice(0, n)
+        .map(([texto, count]) => ({ texto, count }));
+      const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+      const uvasGlobal = {}, zonasGlobal = {};
+      let sumaGlobal = 0, nGlobal = 0;
+
       const usuarios = ids.map((id, i) => {
         const fichas = parse(resultados[i * 3]) || [];
-        const completas = fichas.filter(f => Number(f.puntuacion) > 0).length;
+        const completas = fichas.filter(f => Number(f.puntuacion) > 0);
         const extra = Number(resultados[i * 3 + 1]) || 0;
-        const puntos = completas * 10 + extra;
+        const puntos = completas.length * 10 + extra;
+
+        // Media de puntuación del usuario
+        const media = completas.length
+          ? Math.round(completas.reduce((a, f) => a + Number(f.puntuacion), 0) / completas.length)
+          : null;
+        sumaGlobal += completas.reduce((a, f) => a + Number(f.puntuacion), 0);
+        nGlobal += completas.length;
+
+        // Uvas y zonas catadas
+        const uvas = {}, zonas = {};
+        fichas.forEach(f => {
+          (f.uvas || []).forEach(u => {
+            const v = (u.v || "").trim().toLowerCase();
+            if (v) { uvas[v] = (uvas[v] || 0) + 1; uvasGlobal[v] = (uvasGlobal[v] || 0) + 1; }
+          });
+          const z = (f.zona || f.do_cl || "").trim().toLowerCase();
+          if (z) { zonas[z] = (zonas[z] || 0) + 1; zonasGlobal[z] = (zonasGlobal[z] || 0) + 1; }
+        });
+
         return {
           id: id.slice(0, 12) + "…", // ID truncado (privacidad)
           nombre: resultados[i * 3 + 2] || "—",
           fichas: fichas.length,
+          media,
           puntos,
           nivel: nivelDe(puntos),
+          uvas: top(uvas, 4).map(u => ({ ...u, texto: cap(u.texto) })),
+          zonas: top(zonas, 4).map(z => ({ ...z, texto: cap(z.texto) })),
         };
       }).sort((a, b) => b.puntos - a.puntos);
 
@@ -87,6 +118,9 @@ export default async function handler(req, res) {
         ok: true,
         totalUsuarios: userIds.length,
         totalFichas: usuarios.reduce((a, u) => a + u.fichas, 0),
+        mediaGlobal: nGlobal ? Math.round(sumaGlobal / nGlobal) : null,
+        topUvas: top(uvasGlobal, 8).map(u => ({ ...u, texto: cap(u.texto) })),
+        topZonas: top(zonasGlobal, 8).map(z => ({ ...z, texto: cap(z.texto) })),
         distribucion,
         usuarios,
       });

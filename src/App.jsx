@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ClerkProvider, SignedIn, SignedOut, SignIn, useUser, useClerk } from "@clerk/clerk-react";
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -903,13 +903,352 @@ const ListaVinos = ({ vinos, enviadas, onCatar }) => (
   </div>
 );
 
+// ── FICHA RECUERDO (imagen descargable de la cata grupal) ───────────────────
+const cargarImagen = (src) => new Promise((res, rej) => {
+  const im = new Image();
+  im.onload = () => res(im);
+  im.onerror = rej;
+  im.src = src;
+});
+
+const partirTexto = (ctx, texto, anchoMax) => {
+  const palabras = (texto || "").split(/\s+/);
+  const lineas = [];
+  let linea = "";
+  palabras.forEach(p => {
+    const prueba = linea ? linea + " " + p : p;
+    if (ctx.measureText(prueba).width > anchoMax && linea) {
+      lineas.push(linea);
+      linea = p;
+    } else linea = prueba;
+  });
+  if (linea) lineas.push(linea);
+  return lineas;
+};
+
+const rectRedondo = (ctx, x, y, w, h, r) => {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+};
+
+const FichaRecuerdo = ({ codigo, data, resumenIA, miNombre, onCerrar }) => {
+  const [foto, setFoto] = useState(null);
+  const [imgURL, setImgURL] = useState(null);
+  const [generando, setGenerando] = useState(false);
+  const inputFotoRef = useRef(null);
+
+  const onFoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setFoto(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const generar = async () => {
+    setGenerando(true);
+    try {
+      await document.fonts.ready;
+
+      const W = 1080, M = 80;
+      const SCRIPT = "'Cormorant Garamond', Georgia, serif";
+      const SANS = "'DM Sans', system-ui, sans-serif";
+
+      // Participantes únicos (unión de todos los vinos)
+      const nombres = [...new Set(
+        data.porVino.flatMap(b => (b.resumen?.participantes || []).map(p => p.nombre))
+      )];
+      const fecha = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+
+      // Medidor para textos multilínea
+      const mCtx = document.createElement("canvas").getContext("2d");
+      mCtx.font = `italic 32px ${SCRIPT}`;
+      const lineasResumen = resumenIA
+        ? resumenIA.split("\n").flatMap(p => p.trim() ? partirTexto(mCtx, p.trim(), W - M * 2 - 80) : [""])
+        : [];
+      mCtx.font = `26px ${SANS}`;
+      const lineasNombres = partirTexto(mCtx, nombres.join("  ·  "), W - M * 2 - 60);
+
+      // Altura dinámica
+      const H_HEADER = 250;
+      const H_FOTO = foto ? 590 : 0;
+      const H_VINOS = 70 + data.vinos.length * 180;
+      const H_PARTS = 110 + lineasNombres.length * 38;
+      const H_RESUMEN = resumenIA ? 130 + lineasResumen.length * 46 : 0;
+      const H_FOOTER = 150;
+      const H = H_HEADER + H_FOTO + H_VINOS + H_PARTS + H_RESUMEN + H_FOOTER + 60;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext("2d");
+
+      // Fondo crema
+      ctx.fillStyle = "#F7F4F0";
+      ctx.fillRect(0, 0, W, H);
+
+      // ── Cabecera borgoña ──
+      const grad = ctx.createLinearGradient(0, 0, W, H_HEADER);
+      grad.addColorStop(0, "#8B1A2E");
+      grad.addColorStop(1, "#4A0D1A");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H_HEADER);
+      // Línea dorada
+      ctx.fillStyle = "#C4A882";
+      ctx.fillRect(0, H_HEADER - 6, W, 6);
+
+      // Logo
+      try {
+        const logo = await cargarImagen(LOGO);
+        const lh = 90, lw = logo.width * (lh / logo.height);
+        ctx.drawImage(logo, (W - lw) / 2, 28, lw, lh);
+      } catch { /* sin logo */ }
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#C4A882";
+      ctx.font = `600 22px ${SANS}`;
+      ctx.letterSpacing = "8px";
+      ctx.fillText("F I C H A   D E   C A T A", W / 2, 158);
+      ctx.letterSpacing = "0px";
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.font = `26px ${SCRIPT}`;
+      ctx.fillText(`${fecha}   ·   Código ${codigo}`, W / 2, 205);
+
+      let y = H_HEADER + 50;
+
+      // ── Foto (opcional, recorte cover) ──
+      if (foto) {
+        try {
+          const img = await cargarImagen(foto);
+          const fw = W - M * 2, fh = 520, fx = M, fy = y;
+          rectRedondo(ctx, fx, fy, fw, fh, 24);
+          ctx.save(); ctx.clip();
+          const escala = Math.max(fw / img.width, fh / img.height);
+          const dw = img.width * escala, dh = img.height * escala;
+          ctx.drawImage(img, fx + (fw - dw) / 2, fy + (fh - dh) / 2, dw, dh);
+          ctx.restore();
+          rectRedondo(ctx, fx, fy, fw, fh, 24);
+          ctx.strokeStyle = "#C4A882"; ctx.lineWidth = 4; ctx.stroke();
+          y += fh + 70;
+        } catch { y += 0; }
+      }
+
+      // ── Vinos ──
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#7A6E72";
+      ctx.font = `600 20px ${SANS}`;
+      ctx.letterSpacing = "6px";
+      ctx.fillText("VINOS CATADOS", M, y);
+      ctx.letterSpacing = "0px";
+      y += 40;
+
+      for (let i = 0; i < data.vinos.length; i++) {
+        const v = data.vinos[i];
+        const r = data.porVino[i]?.resumen;
+        const miP = r?.participantes?.find(p => p.nombre === miNombre)?.puntuacion;
+
+        rectRedondo(ctx, M, y, W - M * 2, 150, 18);
+        ctx.fillStyle = "#FFFFFF"; ctx.fill();
+        ctx.strokeStyle = "#E2DAD5"; ctx.lineWidth = 2; ctx.stroke();
+
+        // Número
+        ctx.beginPath();
+        ctx.arc(M + 60, y + 75, 32, 0, Math.PI * 2);
+        ctx.fillStyle = "#8B1A2E"; ctx.fill();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = `700 30px ${SCRIPT}`;
+        ctx.textAlign = "center";
+        ctx.fillText(String(i + 1), M + 60, y + 86);
+
+        // Nombre + bodega
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#1A1014";
+        ctx.font = `700 36px ${SCRIPT}`;
+        ctx.fillText(v.nombre.length > 26 ? v.nombre.slice(0, 25) + "…" : v.nombre, M + 115, y + 68);
+        ctx.fillStyle = "#7A6E72";
+        ctx.font = `24px ${SANS}`;
+        const sub = [v.bodega, v.anada].filter(Boolean).join(" · ");
+        if (sub) ctx.fillText(sub, M + 115, y + 102);
+        if (miP) {
+          ctx.fillStyle = "#8B1A2E";
+          ctx.font = `600 23px ${SANS}`;
+          ctx.fillText(`Tu nota: ${miP}/100`, M + 115, y + (sub ? 133 : 105));
+        }
+
+        // Media del grupo (círculo dorado)
+        if (r?.punt_media) {
+          ctx.beginPath();
+          ctx.arc(W - M - 85, y + 75, 52, 0, Math.PI * 2);
+          const gg = ctx.createLinearGradient(W - M - 137, y + 23, W - M - 33, y + 127);
+          gg.addColorStop(0, "#C4A882"); gg.addColorStop(1, "#A8894E");
+          ctx.fillStyle = gg; ctx.fill();
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = `700 40px ${SCRIPT}`;
+          ctx.textAlign = "center";
+          ctx.fillText(String(r.punt_media), W - M - 85, y + 85);
+          ctx.font = `16px ${SANS}`;
+          ctx.fillText("GRUPO", W - M - 85, y + 112);
+        }
+        y += 180;
+      }
+      y += 30;
+
+      // ── Participantes ──
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#7A6E72";
+      ctx.font = `600 20px ${SANS}`;
+      ctx.letterSpacing = "6px";
+      ctx.fillText(`PARTICIPANTES (${nombres.length})`, M, y);
+      ctx.letterSpacing = "0px";
+      y += 42;
+      ctx.fillStyle = "#1A1014";
+      ctx.font = `26px ${SANS}`;
+      lineasNombres.forEach(l => { ctx.fillText(l, M, y); y += 38; });
+      y += 40;
+
+      // ── Resumen IA ──
+      if (resumenIA) {
+        const hBox = 90 + lineasResumen.length * 46;
+        rectRedondo(ctx, M, y, W - M * 2, hBox, 20);
+        ctx.fillStyle = "#F0EAE2"; ctx.fill();
+        ctx.strokeStyle = "#C4A882"; ctx.lineWidth = 3; ctx.stroke();
+
+        ctx.fillStyle = "#A8894E";
+        ctx.font = `600 19px ${SANS}`;
+        ctx.letterSpacing = "5px";
+        ctx.fillText("✦ NOTA DE CATA COLECTIVA", M + 40, y + 52);
+        ctx.letterSpacing = "0px";
+
+        ctx.fillStyle = "#1A1014";
+        ctx.font = `italic 32px ${SCRIPT}`;
+        let ty = y + 105;
+        lineasResumen.forEach(l => { ctx.fillText(l, M + 40, ty); ty += 46; });
+        y += hBox + 40;
+      }
+
+      // ── Pie borgoña ──
+      const fy2 = H - H_FOOTER;
+      ctx.fillStyle = "#4A0D1A";
+      ctx.fillRect(0, fy2, W, H_FOOTER);
+      ctx.fillStyle = "#C4A882";
+      ctx.fillRect(0, fy2, W, 4);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#C4A882";
+      ctx.font = `italic 600 38px ${SCRIPT}`;
+      ctx.fillText("Vive tu momento Winetastic", W / 2, fy2 + 68);
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = `22px ${SANS}`;
+      ctx.fillText("@winetastic_club", W / 2, fy2 + 108);
+
+      setImgURL(canvas.toDataURL("image/png"));
+    } catch (e) {
+      console.error("Error generando ficha:", e);
+    }
+    setGenerando(false);
+  };
+
+  const descargar = () => {
+    const a = document.createElement("a");
+    a.href = imgURL;
+    a.download = `winetastic_cata_${codigo}.png`;
+    a.click();
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(26,16,20,0.85)",
+      zIndex: 1000, overflowY: "auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", background: C.bg,
+        borderRadius: 18, padding: "24px 20px" }}>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <span style={{ fontFamily: F.script, fontSize: 22, fontWeight: 700, color: C.burgundy }}>
+            Ficha Recuerdo
+          </span>
+          <button onClick={onCerrar} style={{ background: "none", border: "none",
+            fontSize: 20, cursor: "pointer", color: C.muted }}>✕</button>
+        </div>
+
+        {!imgURL ? (
+          <>
+            <p style={{ fontFamily: F.serif, fontSize: 13, color: C.muted, lineHeight: 1.7, margin: "0 0 20px" }}>
+              Genera una imagen elegante con el resumen de vuestra cata para guardar en la galería o compartir.
+            </p>
+
+            {/* Foto opcional */}
+            <input ref={inputFotoRef} type="file" accept="image/*" capture="environment"
+              onChange={onFoto} style={{ display: "none" }} />
+            {foto ? (
+              <div style={{ marginBottom: 16, position: "relative" }}>
+                <img src={foto} alt="Foto de la cata" style={{ width: "100%", borderRadius: 12,
+                  border: `2px solid ${C.gold}`, display: "block" }} />
+                <button onClick={() => setFoto(null)}
+                  style={{ position: "absolute", top: 10, right: 10,
+                    background: "rgba(26,16,20,0.7)", color: "#fff", border: "none",
+                    borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12 }}>
+                  ✕ Quitar
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => inputFotoRef.current?.click()}
+                style={{ width: "100%", background: C.card, border: `2px dashed ${C.gold}`,
+                  borderRadius: 12, padding: "22px", cursor: "pointer", marginBottom: 16 }}>
+                <div style={{ fontSize: 26, marginBottom: 6 }}>📷</div>
+                <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 600, color: C.burgundy }}>
+                  Añadir foto (opcional)
+                </div>
+                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, marginTop: 3 }}>
+                  Del grupo, de los vinos, del lugar...
+                </div>
+              </button>
+            )}
+
+            <button onClick={generar} disabled={generando}
+              style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                color: "#FDF7F0", border: "none", borderRadius: 10, padding: "15px",
+                fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
+              {generando ? "Generando..." : "✨ Generar Ficha"}
+            </button>
+          </>
+        ) : (
+          <>
+            <img src={imgURL} alt="Ficha de cata" style={{ width: "100%", borderRadius: 12,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.25)", display: "block", marginBottom: 16 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button onClick={descargar}
+                style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                  color: "#FDF7F0", border: "none", borderRadius: 10, padding: "15px",
+                  fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
+                ⬇ Guardar imagen
+              </button>
+              <p style={{ fontSize: 11, color: C.muted, fontFamily: F.serif,
+                textAlign: "center", margin: 0, fontStyle: "italic" }}>
+                En iPhone también puedes mantener pulsada la imagen y "Guardar en Fotos"
+              </p>
+              <button onClick={() => setImgURL(null)}
+                style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
+                  borderRadius: 9, padding: "12px", fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
+                ← Rehacer (cambiar foto)
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── RESULTADOS MULTI-VINO ───────────────────────────────────────────────────
-const ResultadosMultiView = ({ codigo, onVolver, esAdmin }) => {
+const ResultadosMultiView = ({ codigo, onVolver, esAdmin, miNombre }) => {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [vinoSel, setVinoSel] = useState(0);
   const [genIA, setGenIA] = useState(false);
   const [resumenIA, setResumenIA] = useState(null);
+  const [mostrarFicha, setMostrarFicha] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -1066,25 +1405,37 @@ const ResultadosMultiView = ({ codigo, onVolver, esAdmin }) => {
         </button>
       )}
 
+      <button onClick={() => setMostrarFicha(true)}
+        style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+          color: "#FDF7F0", border: "none", borderRadius: 10, padding: "15px",
+          fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 12 }}>
+        🖼 Crear Ficha Recuerdo
+      </button>
+
       <button onClick={onVolver}
         style={{ width: "100%", background: "none", color: C.muted,
           border: `1px solid ${C.border}`, borderRadius: 9, padding: "14px",
           fontSize: 14, cursor: "pointer", fontFamily: F.serif, marginBottom: 40 }}>
         ← Volver al inicio
       </button>
+
+      {mostrarFicha && (
+        <FichaRecuerdo codigo={codigo} data={data} resumenIA={resumenIA}
+          miNombre={miNombre} onCerrar={() => setMostrarFicha(false)} />
+      )}
     </div>
   );
 };
 
 // ── VISTA ADMINISTRADOR ─────────────────────────────────────────────────────
-const AdminCataView = ({ onVolver }) => {
-  const [paso, setPaso] = useState("config"); // config | dashboard | catar | form | resultados
-  const [adminNombre, setAdminNombre] = useState("");
-  const [vinos, setVinos] = useState([{ nombre: "", anada: "", bodega: "" }]);
-  const [codigo, setCodigo] = useState("");
-  const [pid, setPid] = useState(null);
+const AdminCataView = ({ onVolver, sesion }) => {
+  const [paso, setPaso] = useState(sesion ? "dashboard" : "config"); // config | dashboard | catar | form | resultados
+  const [adminNombre, setAdminNombre] = useState(sesion?.adminNombre || "");
+  const [vinos, setVinos] = useState(sesion?.vinos || [{ nombre: "", anada: "", bodega: "" }]);
+  const [codigo, setCodigo] = useState(sesion?.codigo || "");
+  const [pid, setPid] = useState(sesion?.pid || null);
   const [estado, setEstado] = useState(null);
-  const [enviadas, setEnviadas] = useState([]);
+  const [enviadas, setEnviadas] = useState(sesion?.enviadas || []);
   const [vinoActual, setVinoActual] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -1102,13 +1453,35 @@ const AdminCataView = ({ onVolver }) => {
     setLoading(false);
   };
 
+  // Persistir sesión de anfitrión (permite salir y volver a entrar)
+  useEffect(() => {
+    if (codigo && pid && paso !== "resultados") {
+      localStorage.setItem("wt_cata_admin",
+        JSON.stringify({ codigo, pid, adminNombre, vinos, enviadas, ts: Date.now() }));
+    }
+  }, [codigo, pid, adminNombre, vinos, enviadas, paso]);
+
   // Polling del estado cada 5s en el dashboard
   useEffect(() => {
     if (paso !== "dashboard" || !codigo) return;
     let activo = true;
     const tick = async () => {
       const d = await apiCata({ accion: "estado", codigo });
-      if (activo && d.ok) setEstado(d);
+      if (!activo) return;
+      if (d.ok) {
+        setEstado(d);
+        if (d.vinos) setVinos(d.vinos);
+        if (d.estado === "finalizada") {
+          localStorage.removeItem("wt_cata_admin");
+          setPaso("resultados");
+        }
+      } else {
+        // La cata expiró o no existe: limpiar sesión y avisar
+        localStorage.removeItem("wt_cata_admin");
+        setError(d.error || "La cata ya no está disponible.");
+        setEstado(null);
+        setPaso("config");
+      }
     };
     tick();
     const id = setInterval(tick, 5000);
@@ -1129,6 +1502,7 @@ const AdminCataView = ({ onVolver }) => {
     setLoading(true);
     await apiCata({ accion: "finalizar", codigo });
     setLoading(false);
+    localStorage.removeItem("wt_cata_admin");
     setPaso("resultados");
   };
 
@@ -1267,10 +1641,10 @@ const AdminCataView = ({ onVolver }) => {
             fontFamily: F.serif, fontWeight: 600 }}>
           {loading ? "Cargando..." : "🏁 Finalizar cata y ver resultados"}
         </button>
-        <button onClick={() => { if (window.confirm("¿Salir? La cata sigue activa con el código " + codigo)) onVolver(); }}
+        <button onClick={onVolver}
           style={{ background: "none", color: C.muted, border: `1px solid ${C.border}`,
             borderRadius: 9, padding: "12px", fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>
-          Volver al inicio
+          Volver al inicio (podrás retomar la cata)
         </button>
       </div>
     </div>
@@ -1302,20 +1676,21 @@ const AdminCataView = ({ onVolver }) => {
 
   // ── RESULTADOS ──
   if (paso === "resultados") return (
-    <ResultadosMultiView codigo={codigo} onVolver={onVolver} esAdmin={true} />
+    <ResultadosMultiView codigo={codigo} onVolver={onVolver} esAdmin={true}
+      miNombre={adminNombre || "Anfitrión"} />
   );
 
   return null;
 };
 
 // ── VISTA INVITADO ──────────────────────────────────────────────────────────
-const InvitadoCataView = ({ onVolver }) => {
-  const [paso, setPaso] = useState("codigo"); // codigo | vinos | form | espera | resultados
-  const [codigoInput, setCodigoInput] = useState("");
-  const [nombre, setNombre] = useState("");
-  const [vinos, setVinos] = useState([]);
-  const [pid, setPid] = useState(null);
-  const [enviadas, setEnviadas] = useState([]);
+const InvitadoCataView = ({ onVolver, sesion }) => {
+  const [paso, setPaso] = useState(sesion ? "vinos" : "codigo"); // codigo | vinos | form | espera | resultados
+  const [codigoInput, setCodigoInput] = useState(sesion?.codigo || "");
+  const [nombre, setNombre] = useState(sesion?.nombre || "");
+  const [vinos, setVinos] = useState(sesion?.vinos || []);
+  const [pid, setPid] = useState(sesion?.pid || null);
+  const [enviadas, setEnviadas] = useState(sesion?.enviadas || []);
   const [vinoActual, setVinoActual] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -1349,6 +1724,29 @@ const InvitadoCataView = ({ onVolver }) => {
     setLoading(false);
     setPaso("espera");
   };
+
+  // Persistir sesión de invitado (permite salir y volver a entrar)
+  useEffect(() => {
+    if (codigo && pid && paso !== "resultados") {
+      localStorage.setItem("wt_cata_invitado",
+        JSON.stringify({ codigo, pid, nombre, vinos, enviadas, ts: Date.now() }));
+    }
+    if (paso === "resultados") localStorage.removeItem("wt_cata_invitado");
+  }, [codigo, pid, nombre, vinos, enviadas, paso]);
+
+  // Al restaurar sesión: comprobar que la cata sigue viva (o ya finalizó)
+  useEffect(() => {
+    if (!sesion) return;
+    (async () => {
+      const d = await apiCata({ accion: "estado", codigo: sesion.codigo });
+      if (d.ok && d.estado === "finalizada") setPaso("resultados");
+      else if (!d.ok) {
+        localStorage.removeItem("wt_cata_invitado");
+        setError("La cata ya no está disponible.");
+        setPaso("codigo");
+      }
+    })();
+  }, []);
 
   // Polling en espera: cuando el admin finaliza, mostrar resultados automáticamente
   useEffect(() => {
@@ -1457,18 +1855,32 @@ const InvitadoCataView = ({ onVolver }) => {
 
   // ── RESULTADOS ──
   if (paso === "resultados") return (
-    <ResultadosMultiView codigo={codigo} onVolver={onVolver} esAdmin={false} />
+    <ResultadosMultiView codigo={codigo} onVolver={onVolver} esAdmin={false}
+      miNombre={nombre || "Invitado"} />
   );
 
   return null;
 };
 
 // ── HUB: ¿ADMINISTRADOR O INVITADO? ─────────────────────────────────────────
+const leerSesionCata = (key) => {
+  try {
+    const s = JSON.parse(localStorage.getItem(key));
+    // Ignorar sesiones de más de 24h (los eventos duran horas, no días)
+    if (s?.codigo && s?.pid && Date.now() - (s.ts || 0) < 24 * 60 * 60 * 1000) return s;
+  } catch { /* corrupta */ }
+  localStorage.removeItem(key);
+  return null;
+};
+
 const CataGrupalView = ({ onVolver, rolInicial = null }) => {
   const [rol, setRol] = useState(rolInicial);
+  const [reanudar, setReanudar] = useState(false);
+  const sesionAdmin = leerSesionCata("wt_cata_admin");
+  const sesionInv = leerSesionCata("wt_cata_invitado");
 
-  if (rol === "admin") return <AdminCataView onVolver={onVolver} />;
-  if (rol === "invitado") return <InvitadoCataView onVolver={onVolver} />;
+  if (rol === "admin") return <AdminCataView onVolver={onVolver} sesion={reanudar ? sesionAdmin : null} />;
+  if (rol === "invitado") return <InvitadoCataView onVolver={onVolver} sesion={reanudar ? sesionInv : null} />;
 
   return (
     <div style={{ maxWidth: 440, margin: "0 auto", padding: "32px 20px", textAlign: "center" }}>
@@ -1479,6 +1891,34 @@ const CataGrupalView = ({ onVolver, rolInicial = null }) => {
       <p style={{ color: C.muted, fontSize: 13, fontStyle: "italic", margin: "0 0 28px", fontFamily: F.serif }}>
         Catad juntos y comparad vuestras impresiones
       </p>
+
+      {(sesionAdmin || sesionInv) && (
+        <div style={{ marginBottom: 18 }}>
+          {sesionAdmin && (
+            <button onClick={() => { setReanudar(true); setRol("admin"); }}
+              style={{ width: "100%", background: C.cream, border: `2px solid ${C.gold}`,
+                borderRadius: 12, padding: "14px 16px", cursor: "pointer",
+                textAlign: "left", marginBottom: sesionInv ? 10 : 0 }}>
+              <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+                color: C.goldDark, fontFamily: F.serif, marginBottom: 4 }}>Cata en curso</div>
+              <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 700, color: C.burgundy }}>
+                ▶ Continuar como Anfitrión · {sesionAdmin.codigo}
+              </div>
+            </button>
+          )}
+          {sesionInv && (
+            <button onClick={() => { setReanudar(true); setRol("invitado"); }}
+              style={{ width: "100%", background: C.cream, border: `2px solid ${C.gold}`,
+                borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left" }}>
+              <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+                color: C.goldDark, fontFamily: F.serif, marginBottom: 4 }}>Cata en curso</div>
+              <div style={{ fontFamily: F.script, fontSize: 16, fontWeight: 700, color: C.burgundy }}>
+                ▶ Continuar como Invitado · {sesionInv.codigo}
+              </div>
+            </button>
+          )}
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <button onClick={() => setRol("admin")}

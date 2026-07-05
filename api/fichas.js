@@ -61,6 +61,45 @@ export default async function handler(req, res) {
       return res.json({ ok: true, fichas });
     }
 
+    if (accion === "obtener_perfil") {
+      const raw = await redis("GET", `perfil:${userId}`);
+      let datos = null;
+      try { datos = JSON.parse(raw); } catch { /* sin perfil */ }
+      return res.json({ ok: true, perfil: datos });
+    }
+
+    if (accion === "guardar_perfil") {
+      const p = req.body.perfil || {};
+      // Leer perfil previo para saber si el bono ya fue concedido
+      const rawPrev = await redis("GET", `perfil:${userId}`);
+      let prev = null;
+      try { prev = JSON.parse(rawPrev); } catch { /* primero */ }
+
+      const completo = !!(p.nombre?.trim() && p.provincia?.trim() && p.nacimiento);
+      const bonusYaDado = !!prev?.bonusDado;
+      const darBonus = completo && !bonusYaDado;
+
+      const nuevo = {
+        nombre: (p.nombre || "").trim(),
+        apellidos: (p.apellidos || "").trim(),
+        provincia: (p.provincia || "").trim(),
+        pais: (p.pais || "España").trim(),
+        nacimiento: p.nacimiento || "",
+        tipos: Array.isArray(p.tipos) ? p.tipos : [],
+        crianzas: Array.isArray(p.crianzas) ? p.crianzas : [],
+        presupuesto: p.presupuesto || "",
+        frecuencia: p.frecuencia || "",
+        consentMarketing: !!p.consentMarketing,
+        consentFecha: p.consentMarketing ? (prev?.consentFecha || Date.now()) : null,
+        bonusDado: bonusYaDado || darBonus,
+        actualizadoEn: Date.now(),
+      };
+      await redis("SET", `perfil:${userId}`, JSON.stringify(nuevo));
+      if (darBonus) await redis("INCRBY", `puntos_extra:${userId}`, 50);
+
+      return res.json({ ok: true, bonus: darBonus ? 50 : 0 });
+    }
+
     if (accion === "perfil") {
       const fichas = await getFichas(KEY);
       const completas = fichas.filter(f => Number(f.puntuacion) > 0).length;

@@ -2965,7 +2965,17 @@ const AdminPanelView = ({ onVolver }) => {
                     padding: "4px 12px 14px 44px" }}>
                     <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif, marginBottom: 6 }}>
                       Nivel <strong>{u.nivel}</strong>
+                      {u.provincia ? <> · {u.provincia}</> : null}
+                      {u.edad ? <> · {u.edad} años</> : null}
+                      {u.consentMarketing && <span style={{ color: C.goldDark }}> · ✓ acepta promos</span>}
                     </div>
+                    {(u.prefTipos?.length > 0 || u.prefCrianzas?.length > 0) && (
+                      <div style={{ fontSize: 12, fontFamily: F.serif, color: C.text, marginBottom: 6 }}>
+                        <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase",
+                          color: C.muted }}>Prefiere: </span>
+                        {[...(u.prefTipos || []), ...(u.prefCrianzas || [])].join(" · ")}
+                      </div>
+                    )}
                     {u.uvas?.length > 0 && (
                       <div style={{ marginBottom: 6 }}>
                         <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase",
@@ -3080,6 +3090,182 @@ const AdminPanelView = ({ onVolver }) => {
           <div style={{ height: 40 }} />
         </div>
       )}
+    </div>
+  );
+};
+
+// ── MI PERFIL ────────────────────────────────────────────────────────────────
+const PerfilView = ({ userId, onGuardado }) => {
+  const [p, setP] = useState({
+    nombre: "", apellidos: "", provincia: "", pais: "España", nacimiento: "",
+    tipos: [], crianzas: [], presupuesto: "", frecuencia: "", consentMarketing: false,
+  });
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [msg, setMsg] = useState(null); // { tipo: "ok"|"bonus"|"error", texto }
+  const [bonusDado, setBonusDado] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const d = await apiFichas("obtener_perfil", userId);
+      if (d?.perfil) {
+        setP(prev => ({ ...prev, ...d.perfil }));
+        setBonusDado(!!d.perfil.bonusDado);
+      }
+      setCargando(false);
+    })();
+  }, [userId]);
+
+  const set = (k, v) => setP(prev => ({ ...prev, [k]: v }));
+  const toggle = (k, val) => setP(prev => ({
+    ...prev,
+    [k]: prev[k].includes(val) ? prev[k].filter(x => x !== val) : [...prev[k], val],
+  }));
+
+  const guardar = async () => {
+    if (!userId) return;
+    setGuardando(true); setMsg(null);
+    const d = await apiFichas("guardar_perfil", userId, { perfil: p });
+    setGuardando(false);
+    if (d?.ok) {
+      if (d.bonus > 0) {
+        setBonusDado(true);
+        setMsg({ tipo: "bonus", texto: `¡Perfil completado! Has ganado +${d.bonus} puntos ✦` });
+      } else {
+        setMsg({ tipo: "ok", texto: "Perfil guardado correctamente" });
+      }
+      if (onGuardado) onGuardado();
+      setTimeout(() => setMsg(null), 4000);
+    } else {
+      setMsg({ tipo: "error", texto: d?.error || "Error al guardar. Inténtalo de nuevo." });
+    }
+  };
+
+  const Chip = ({ activo, onClick, children }) => (
+    <button onClick={onClick}
+      style={{ background: activo ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : C.card,
+        color: activo ? "#fff" : C.text, border: `1px solid ${activo ? C.burgundy : C.border}`,
+        borderRadius: 20, padding: "8px 16px", cursor: "pointer",
+        fontFamily: F.serif, fontSize: 13, transition: "all 0.15s" }}>
+      {children}
+    </button>
+  );
+
+  if (cargando) return (
+    <div style={{ textAlign: "center", padding: 60, color: C.muted, fontFamily: F.serif }}>
+      Cargando tu perfil...
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Cabecera con incentivo */}
+      <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+        borderRadius: 14, padding: "20px", marginBottom: 20,
+        position: "relative", overflow: "hidden" }}>
+        <img src={LOGO} alt="" style={{ position: "absolute", right: -10, bottom: -10,
+          width: 100, height: 100, opacity: 0.08, filter: "brightness(0) invert(1)" }} />
+        <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
+          letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Winetastic</div>
+        <div style={{ color: "#fff", fontFamily: F.script, fontSize: 22, fontWeight: 600 }}>
+          Mi Perfil
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12,
+          fontFamily: F.serif, marginTop: 4 }}>
+          {bonusDado
+            ? "Tus datos nos ayudan a recomendarte mejor"
+            : "Complétalo y gana +50 puntos de catador"}
+        </div>
+      </div>
+
+      {/* Datos personales */}
+      <Section title="Datos personales">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Nombre *"><TInput value={p.nombre} onChange={v => set("nombre", v)} placeholder="Tu nombre" /></Field>
+          <Field label="Apellidos"><TInput value={p.apellidos} onChange={v => set("apellidos", v)} placeholder="Tus apellidos" /></Field>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Provincia *"><TInput value={p.provincia} onChange={v => set("provincia", v)} placeholder="Ciudad Real" /></Field>
+          <Field label="País"><TInput value={p.pais} onChange={v => set("pais", v)} placeholder="España" /></Field>
+        </div>
+        <Field label="Fecha de nacimiento *">
+          <input type="date" value={p.nacimiento} onChange={e => set("nacimiento", e.target.value)}
+            max={new Date(Date.now() - 18 * 31557600000).toISOString().split("T")[0]}
+            style={iBase} />
+        </Field>
+      </Section>
+
+      {/* Preferencias */}
+      <Section title="Mis gustos">
+        <Field label="¿Qué vinos te gustan?">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {["Tintos", "Blancos", "Rosados", "Espumosos", "Todos"].map(t => (
+              <Chip key={t} activo={p.tipos.includes(t)} onClick={() => toggle("tipos", t)}>{t}</Chip>
+            ))}
+          </div>
+        </Field>
+        <Field label="¿Qué crianzas prefieres?">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {["Jóvenes", "Crianza", "Reserva", "Gran Reserva"].map(t => (
+              <Chip key={t} activo={p.crianzas.includes(t)} onClick={() => toggle("crianzas", t)}>{t}</Chip>
+            ))}
+          </div>
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Presupuesto por botella">
+            <select value={p.presupuesto} onChange={e => set("presupuesto", e.target.value)} style={iBase}>
+              <option value="">Selecciona</option>
+              <option>Menos de 10€</option>
+              <option>10€ – 20€</option>
+              <option>20€ – 50€</option>
+              <option>Más de 50€</option>
+            </select>
+          </Field>
+          <Field label="¿Cada cuánto tomas vino?">
+            <select value={p.frecuencia} onChange={e => set("frecuencia", e.target.value)} style={iBase}>
+              <option value="">Selecciona</option>
+              <option>Ocasiones especiales</option>
+              <option>Fines de semana</option>
+              <option>Varias veces por semana</option>
+              <option>A diario</option>
+            </select>
+          </Field>
+        </div>
+      </Section>
+
+      {/* Consentimiento RGPD */}
+      <div style={{ background: C.cream, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+          <input type="checkbox" checked={p.consentMarketing}
+            onChange={e => set("consentMarketing", e.target.checked)}
+            style={{ marginTop: 3, accentColor: C.burgundy, width: 16, height: 16, cursor: "pointer" }} />
+          <span style={{ fontSize: 12, color: C.text, fontFamily: F.serif, lineHeight: 1.6 }}>
+            Quiero recibir <strong>ventajas y recomendaciones personalizadas</strong> según
+            mis catas y preferencias. Puedo retirar este consentimiento cuando quiera
+            desmarcando esta casilla.
+          </span>
+        </label>
+      </div>
+
+      {msg && (
+        <div style={{
+          background: msg.tipo === "error" ? "#FFF0F0" : msg.tipo === "bonus" ? `${C.gold}20` : C.cream,
+          border: `1px solid ${msg.tipo === "error" ? "#FFA0A0" : C.gold}`,
+          borderRadius: 10, padding: "12px 16px", marginBottom: 14,
+          fontSize: 14, fontFamily: F.serif, textAlign: "center",
+          color: msg.tipo === "error" ? "#C0392B" : msg.tipo === "bonus" ? C.goldDark : C.text,
+          fontWeight: msg.tipo === "bonus" ? 700 : 400 }}>
+          {msg.texto}
+        </div>
+      )}
+
+      <button onClick={guardar} disabled={guardando}
+        style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+          color: "#FDF7F0", border: "none", borderRadius: 10, padding: "15px",
+          fontSize: 16, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 40 }}>
+        {guardando ? "Guardando..." : bonusDado ? "Actualizar perfil" : "Guardar perfil (+50 pts)"}
+      </button>
     </div>
   );
 };
@@ -3401,8 +3587,8 @@ function WinetasticApp() {
 
             </div>
 
-            {/* Unirse — ancho completo con foto */}
-            <button onClick={() => setView("unirse_cata")}
+            {/* Mi Perfil — ancho completo con foto */}
+            <button onClick={() => setView("perfil")}
               style={{ position: "relative", border: "none", borderRadius: 14, padding: 0,
                 cursor: "pointer", overflow: "hidden", width: "100%", height: 110,
                 boxShadow: "0 4px 16px rgba(0,0,0,0.12)", transition: "transform 0.15s",
@@ -3415,11 +3601,11 @@ function WinetasticApp() {
                 background: "linear-gradient(90deg, rgba(30,50,20,0.78) 0%, rgba(30,50,20,0.45) 100%)" }} />
               <div style={{ position: "absolute", top: "50%", left: 20,
                 transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ fontSize: 22, color: "#fff", opacity: 0.9 }}>🔑</span>
+                <span style={{ fontSize: 20, color: "#fff", opacity: 0.9 }}>❋</span>
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontFamily: F.script, fontSize: 18, fontWeight: 600,
-                    color: "#fff", marginBottom: 2, textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>Unirse a una Cata</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontFamily: F.serif }}>Tengo un código de acceso</div>
+                    color: "#fff", marginBottom: 2, textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>Mi Perfil</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontFamily: F.serif }}>Completa tus gustos y gana +50 puntos</div>
                 </div>
               </div>
             </button>
@@ -3520,6 +3706,12 @@ function WinetasticApp() {
 
         {/* ── VISTA VENTAJAS ── */}
         {view === "ventajas" && <VentajasView perfil={perfil} />}
+
+        {/* ── VISTA MI PERFIL ── */}
+        {view === "perfil" && <PerfilView userId={userId} onGuardado={async () => {
+          const pf = await apiFichas("perfil", userId);
+          if (pf?.ok) setPerfil({ puntos: pf.puntos, ...nivelDe(pf.puntos) });
+        }} />}
 
         {/* ── VISTA ADMIN ── */}
         {view === "admin" && <AdminPanelView onVolver={() => setView("home")} />}

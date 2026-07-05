@@ -63,6 +63,7 @@ export default async function handler(req, res) {
         ["GET", `fichas:${id}`],
         ["GET", `puntos_extra:${id}`],
         ["HGET", `usuario:${id}`, "nombre"],
+        ["GET", `perfil:${id}`],
       ]);
       const resultados = await redisPipeline(comandos);
 
@@ -76,9 +77,9 @@ export default async function handler(req, res) {
       let sumaGlobal = 0, nGlobal = 0;
 
       const usuarios = ids.map((id, i) => {
-        const fichas = parse(resultados[i * 3]) || [];
+        const fichas = parse(resultados[i * 4]) || [];
         const completas = fichas.filter(f => Number(f.puntuacion) > 0);
-        const extra = Number(resultados[i * 3 + 1]) || 0;
+        const extra = Number(resultados[i * 4 + 1]) || 0;
         const puntos = completas.length * 10 + extra;
 
         // Media de puntuación del usuario
@@ -99,15 +100,26 @@ export default async function handler(req, res) {
           if (z) { zonas[z] = (zonas[z] || 0) + 1; zonasGlobal[z] = (zonasGlobal[z] || 0) + 1; }
         });
 
+        // Perfil declarado (si existe)
+        const pf = parse(resultados[i * 4 + 3]);
+        const edad = pf?.nacimiento
+          ? Math.floor((Date.now() - new Date(pf.nacimiento).getTime()) / 31557600000)
+          : null;
+
         return {
           id: id.slice(0, 12) + "…", // ID truncado (privacidad)
-          nombre: resultados[i * 3 + 2] || "—",
+          nombre: (pf?.nombre ? `${pf.nombre} ${pf.apellidos || ""}`.trim() : null) || resultados[i * 4 + 2] || "—",
           fichas: fichas.length,
           media,
           puntos,
           nivel: nivelDe(puntos),
           uvas: top(uvas, 4).map(u => ({ ...u, texto: cap(u.texto) })),
           zonas: top(zonas, 4).map(z => ({ ...z, texto: cap(z.texto) })),
+          provincia: pf?.provincia || null,
+          edad,
+          prefTipos: pf?.tipos || [],
+          prefCrianzas: pf?.crianzas || [],
+          consentMarketing: !!pf?.consentMarketing,
         };
       }).sort((a, b) => b.puntos - a.puntos);
 

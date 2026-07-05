@@ -3287,52 +3287,6 @@ const PerfilView = ({ userId, onGuardado }) => {
   );
 };
 
-// ── BOTELLA ILUSTRADA (etiqueta Winetastic en vivo) ─────────────────────────
-const BotellaIlustrada = ({ nombre, anada, bodega, color }) => {
-  const c = (color || "").toLowerCase();
-  const vino = /blanc|pajiz|dorad|amarill|verdos|oro|ámbar|ambar/.test(c) ? "#D9B65C"
-    : /rosa|salm|frambuesa|fresa|cebolla/.test(c) ? "#D98CA0"
-    : "#6B1424";
-  const nom = (nombre || "").length > 18 ? nombre.slice(0, 17) + "…" : nombre;
-
-  return (
-    <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-      <svg width="150" height="210" viewBox="0 0 150 210">
-        {/* Sombra base */}
-        <ellipse cx="75" cy="200" rx="34" ry="6" fill="rgba(0,0,0,0.08)" />
-        {/* Cuerpo de la botella (línea elegante) */}
-        <path d="M67 12 h16 v8 q0 4 3 10 l6 14 q4 9 4 20 v120 q0 10 -10 10 h-22 q-10 0 -10 -10 v-120 q0 -11 4 -20 l6 -14 q3 -6 3 -10 z"
-          fill="#FDFBF8" stroke="#A8894E" strokeWidth="2" />
-        {/* Vino dentro */}
-        <path d="M56 90 v94 q0 8 8 8 h22 q8 0 8 -8 v-94 z"
-          fill={vino} opacity="0.88" />
-        {/* Brillo del cristal */}
-        <path d="M62 40 q-3 20 -3 50 v80" stroke="rgba(255,255,255,0.55)"
-          strokeWidth="3" fill="none" strokeLinecap="round" />
-        {/* Cápsula */}
-        <rect x="65" y="8" width="20" height="14" rx="3" fill="#8B1A2E" stroke="#A8894E" strokeWidth="1" />
-        {/* Etiqueta */}
-        <rect x="49" y="108" width="52" height="62" rx="4"
-          fill="#F7F4F0" stroke="#C4A882" strokeWidth="1.5" />
-        <text x="75" y="122" textAnchor="middle" fontSize="7"
-          fill="#A8894E" letterSpacing="2" fontFamily="'DM Sans', sans-serif">WINETASTIC</text>
-        <line x1="57" y1="127" x2="93" y2="127" stroke="#C4A882" strokeWidth="0.7" />
-        <text x="75" y="141" textAnchor="middle" fontSize="9" fontWeight="700"
-          fill="#1A1014" fontFamily="'Cormorant Garamond', serif">
-          {nom || "Tu vino"}
-        </text>
-        {bodega && <text x="75" y="152" textAnchor="middle" fontSize="6.5"
-          fill="#7A6E72" fontFamily="'DM Sans', sans-serif">
-          {bodega.length > 22 ? bodega.slice(0, 21) + "…" : bodega}
-        </text>}
-        {anada && <text x="75" y="164" textAnchor="middle" fontSize="10" fontWeight="600"
-          fill="#8B1A2E" fontFamily="'Cormorant Garamond', serif">{anada}</text>}
-        <text x="75" y="176" textAnchor="middle" fontSize="6" fill="#C4A882">◆</text>
-      </svg>
-    </div>
-  );
-};
-
 function WinetasticApp() {
   const [view, setView] = useState("home");
 
@@ -3869,11 +3823,6 @@ function WinetasticApp() {
 
             {/* Ficha: solo visible si se eligió modo o es edición */}
             {(modoGuiado !== null || !!form.id) && (<>
-
-            {form.nombre?.trim() && (
-              <BotellaIlustrada nombre={form.nombre} anada={form.anada}
-                bodega={form.bodega} color={form.color} />
-            )}
 
             {/* IDENTIFICACIÓN */}
             {modoGuiado && guiaFase === "identificacion" && (

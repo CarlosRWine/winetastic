@@ -9,24 +9,16 @@ const URL = process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 async function redis(...command) {
-  if (!URL || !TOKEN) {
-    throw new Error("Faltan variables de entorno UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN en Vercel.");
-  }
-  let res;
-  try {
-    res = await fetch(URL.trim(), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TOKEN.trim()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(command),
-    });
-  } catch (e) {
-    throw new Error(`No se pudo conectar con Upstash (${command[0]}): ${e.message}`);
-  }
+  const res = await fetch(URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+  });
   const data = await res.json();
-  if (data.error) throw new Error(`Redis (${command[0]}): ${data.error}`);
+  if (data.error) throw new Error(`Redis: ${data.error}`);
   return data.result;
 }
 
@@ -63,7 +55,19 @@ export default async function handler(req, res) {
   try {
     if (accion === "listar") {
       const fichas = await getFichas(KEY);
+      // Registrar usuario (para estadísticas y niveles)
+      await redis("SADD", "usuarios", userId);
+      if (req.body.nombre) await redis("HSET", `usuario:${userId}`, "nombre", req.body.nombre);
       return res.json({ ok: true, fichas });
+    }
+
+    if (accion === "perfil") {
+      const fichas = await getFichas(KEY);
+      const completas = fichas.filter(f => Number(f.puntuacion) > 0).length;
+      const extraRaw = await redis("GET", `puntos_extra:${userId}`);
+      const extra = Number(extraRaw) || 0;
+      const puntos = completas * 10 + extra;
+      return res.json({ ok: true, puntos, fichas: fichas.length, completas, extra });
     }
 
     if (accion === "guardar") {

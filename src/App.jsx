@@ -30,7 +30,21 @@ fontLink.rel = "stylesheet";
 fontLink.href = "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap";
 document.head.appendChild(fontLink);
 
-const F = { script: "'Cormorant Garamond', Georgia, serif", serif: "'DM Sans', system-ui, sans-serif" };
+const F = { script: "'Cormorant Garamond', Georgia, serif", serif: "'DM Sans', system-ui, sans-serif" }
+
+// ── NIVELES DE CATADOR ──────────────────────────────────────────────────────
+const NIVELES = [
+  { min: 0,    nombre: "Principiante",    icono: "🌱" },
+  { min: 100,  nombre: "Aficionado",      icono: "🍇" },
+  { min: 300,  nombre: "Catador",         icono: "🍷" },
+  { min: 750,  nombre: "Experto Catador", icono: "🥇" },
+  { min: 1500, nombre: "Gran Reserva",    icono: "👑" },
+];
+const nivelDe = (puntos) => {
+  let idx = 0;
+  NIVELES.forEach((n, i) => { if (puntos >= n.min) idx = i; });
+  return { ...NIVELES[idx], idx, siguiente: NIVELES[idx + 1] || null };
+};;
 
 // ─── STORAGE KEY (solo para migración) ─────────────────────────────────────
 const LS_KEY = "wt_fichas_v2";
@@ -1429,6 +1443,7 @@ const ResultadosMultiView = ({ codigo, onVolver, esAdmin, miNombre }) => {
 
 // ── VISTA ADMINISTRADOR ─────────────────────────────────────────────────────
 const AdminCataView = ({ onVolver, sesion }) => {
+  const { user: clerkUser } = useUser();
   const [paso, setPaso] = useState(sesion ? "dashboard" : "config"); // config | dashboard | catar | form | resultados
   const [adminNombre, setAdminNombre] = useState(sesion?.adminNombre || "");
   const [vinos, setVinos] = useState(sesion?.vinos || [{ nombre: "", anada: "", bodega: "" }]);
@@ -1447,7 +1462,7 @@ const AdminCataView = ({ onVolver, sesion }) => {
     const validos = vinos.filter(v => v.nombre.trim());
     if (validos.length === 0) { setError("Añade al menos un vino."); return; }
     setLoading(true); setError("");
-    const d = await apiCata({ accion: "crear", vinos: validos, adminNombre });
+    const d = await apiCata({ accion: "crear", vinos: validos, adminNombre, userId: clerkUser?.id });
     if (d.ok) { setCodigo(d.codigo); setPid(d.pid); setVinos(d.vinos); setPaso("dashboard"); }
     else setError(d.error || "Error al crear.");
     setLoading(false);
@@ -1491,7 +1506,7 @@ const AdminCataView = ({ onVolver, sesion }) => {
   const enviarFicha = async (form) => {
     setLoading(true);
     const d = await apiCata({ accion: "enviar_ficha", codigo, pid,
-      nombre: adminNombre || "Anfitrión", vinoIdx: vinoActual, ficha: form });
+      nombre: adminNombre || "Anfitrión", vinoIdx: vinoActual, ficha: form, userId: clerkUser?.id });
     setLoading(false);
     if (d.ok) { setEnviadas(e => [...e, vinoActual]); setVinoActual(null); setPaso("catar"); }
     else setError(d.error || "Error al enviar.");
@@ -1685,6 +1700,7 @@ const AdminCataView = ({ onVolver, sesion }) => {
 
 // ── VISTA INVITADO ──────────────────────────────────────────────────────────
 const InvitadoCataView = ({ onVolver, sesion }) => {
+  const { user: clerkUser } = useUser();
   const [paso, setPaso] = useState(sesion ? "vinos" : "codigo"); // codigo | vinos | form | espera | resultados
   const [codigoInput, setCodigoInput] = useState(sesion?.codigo || "");
   const [nombre, setNombre] = useState(sesion?.nombre || "");
@@ -1712,7 +1728,7 @@ const InvitadoCataView = ({ onVolver, sesion }) => {
   const enviarFicha = async (form) => {
     setLoading(true);
     const d = await apiCata({ accion: "enviar_ficha", codigo, pid,
-      nombre: nombre || "Invitado", vinoIdx: vinoActual, ficha: form });
+      nombre: nombre || "Invitado", vinoIdx: vinoActual, ficha: form, userId: clerkUser?.id });
     setLoading(false);
     if (d.ok) { setEnviadas(e => [...e, vinoActual]); setVinoActual(null); setPaso("vinos"); }
     else setError(d.error || "Error al enviar.");
@@ -2588,6 +2604,389 @@ const GuiaCard = ({ seccion, onContinuar }) => {
   );
 };
 
+// ── VENTAJAS WINETASTIC (usuario) ───────────────────────────────────────────
+const VentajasView = ({ perfil }) => {
+  const [ventajas, setVentajas] = useState(null);
+  const [copiado, setCopiado] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/ventajas").then(r => r.json())
+      .then(d => setVentajas(d.ventajas || []))
+      .catch(() => setVentajas([]));
+  }, []);
+
+  const nivelIdx = perfil?.idx ?? 0;
+  const visibles = (ventajas || []).filter(v => (v.nivelMin || 0) <= nivelIdx);
+  const bloqueadas = (ventajas || []).filter(v => (v.nivelMin || 0) > nivelIdx);
+  const pct = perfil?.siguiente
+    ? Math.min(100, Math.round(((perfil.puntos - NIVELES[perfil.idx].min) /
+        (perfil.siguiente.min - NIVELES[perfil.idx].min)) * 100))
+    : 100;
+
+  return (
+    <div>
+      {/* Tarjeta de nivel */}
+      <div style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+        borderRadius: 16, padding: "24px 20px", marginBottom: 20,
+        position: "relative", overflow: "hidden" }}>
+        <img src={LOGO} alt="" style={{ position: "absolute", right: -14, bottom: -14,
+          width: 110, height: 110, opacity: 0.08, filter: "brightness(0) invert(1)" }} />
+        <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
+          letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>Tu nivel de catador</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <span style={{ fontSize: 36 }}>{perfil?.icono || "🌱"}</span>
+          <div>
+            <div style={{ color: "#fff", fontFamily: F.script, fontSize: 26, fontWeight: 700 }}>
+              {perfil?.nombre || "Principiante"}
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontFamily: F.serif }}>
+              {perfil?.puntos ?? 0} puntos
+            </div>
+          </div>
+        </div>
+        {perfil?.siguiente ? (
+          <>
+            <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, height: 10, overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%",
+                background: `linear-gradient(90deg, ${C.gold}, #E8D5B0)`, transition: "width 0.5s" }} />
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11,
+              fontFamily: F.serif, marginTop: 8 }}>
+              {perfil.siguiente.min - perfil.puntos} puntos para {perfil.siguiente.icono} {perfil.siguiente.nombre}
+            </div>
+          </>
+        ) : (
+          <div style={{ color: C.gold, fontSize: 12, fontFamily: F.serif, fontStyle: "italic" }}>
+            Has alcanzado el máximo nivel. Chapeau. 👑
+          </div>
+        )}
+      </div>
+
+      {/* Cómo ganar puntos */}
+      <div style={{ background: C.cream, borderRadius: 12, padding: "14px 16px", marginBottom: 24 }}>
+        <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+          color: C.muted, fontFamily: F.serif, marginBottom: 8 }}>Cómo ganar puntos</div>
+        <div style={{ fontSize: 12, color: C.text, fontFamily: F.serif, lineHeight: 2 }}>
+          Completar una ficha de cata <strong>+10</strong> · Participar en cata grupal <strong>+25</strong> · Organizar una cata <strong>+40</strong>
+        </div>
+      </div>
+
+      {/* Ventajas disponibles */}
+      <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+        color: C.muted, fontFamily: F.serif, marginBottom: 12 }}>
+        Tus ventajas ({visibles.length})
+      </div>
+
+      {ventajas === null ? (
+        <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, textAlign: "center", padding: 20 }}>Cargando...</p>
+      ) : visibles.length === 0 ? (
+        <div style={{ background: C.card, border: `1px dashed ${C.border}`, borderRadius: 14,
+          padding: "28px 20px", textAlign: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 30, marginBottom: 8 }}>🎁</div>
+          <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, margin: 0, fontStyle: "italic" }}>
+            Aún no hay ventajas para tu nivel.<br/>Sigue catando: pronto llegarán bonos y descuentos.
+          </p>
+        </div>
+      ) : visibles.map(v => (
+        <div key={v.id} style={{ background: C.card, border: `2px solid ${C.gold}`,
+          borderRadius: 14, padding: "16px 18px", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: F.script, fontSize: 18, fontWeight: 700, color: C.burgundy }}>{v.titulo}</div>
+              {v.tienda && <div style={{ fontSize: 11, color: C.goldDark, fontFamily: F.serif, marginTop: 2 }}>{v.tienda}</div>}
+            </div>
+            {v.nivelMin > 0 && (
+              <span style={{ background: C.cream, borderRadius: 12, padding: "3px 10px",
+                fontSize: 10, color: C.goldDark, fontFamily: F.serif, whiteSpace: "nowrap" }}>
+                {NIVELES[v.nivelMin].icono} {NIVELES[v.nivelMin].nombre}+
+              </span>
+            )}
+          </div>
+          {v.descripcion && <p style={{ fontSize: 13, color: C.muted, fontFamily: F.serif,
+            lineHeight: 1.6, margin: "8px 0 0" }}>{v.descripcion}</p>}
+          {v.codigo && (
+            <button onClick={() => { navigator.clipboard.writeText(v.codigo); setCopiado(v.id); setTimeout(() => setCopiado(null), 2000); }}
+              style={{ marginTop: 12, width: "100%", background: C.bg,
+                border: `2px dashed ${C.gold}`, borderRadius: 9, padding: "10px",
+                cursor: "pointer", fontFamily: F.script, fontSize: 17, fontWeight: 700,
+                color: C.burgundy, letterSpacing: 3 }}>
+              {copiado === v.id ? "✓ Copiado" : v.codigo}
+            </button>
+          )}
+          {v.caducidad && <div style={{ fontSize: 10, color: C.muted, fontFamily: F.serif,
+            marginTop: 8, textAlign: "right" }}>Válido hasta {v.caducidad}</div>}
+        </div>
+      ))}
+
+      {/* Bloqueadas (motivación) */}
+      {bloqueadas.length > 0 && (
+        <>
+          <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+            color: C.muted, fontFamily: F.serif, margin: "20px 0 12px" }}>
+            Se desbloquean subiendo de nivel ({bloqueadas.length})
+          </div>
+          {bloqueadas.map(v => (
+            <div key={v.id} style={{ background: C.cream, border: `1px solid ${C.border}`,
+              borderRadius: 14, padding: "14px 18px", marginBottom: 10, opacity: 0.7 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 18 }}>🔒</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: F.script, fontSize: 15, fontWeight: 700, color: C.muted }}>{v.titulo}</div>
+                  <div style={{ fontSize: 11, color: C.goldDark, fontFamily: F.serif }}>
+                    Requiere nivel {NIVELES[v.nivelMin]?.icono} {NIVELES[v.nivelMin]?.nombre}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      <div style={{ height: 40 }} />
+    </div>
+  );
+};
+
+// ── PANEL DE ADMINISTRACIÓN ─────────────────────────────────────────────────
+const AdminPanelView = ({ onVolver }) => {
+  const [adminKey, setAdminKey] = useState(() => localStorage.getItem("wt_admin_key") || "");
+  const [autenticado, setAutenticado] = useState(false);
+  const [tab, setTab] = useState("stats"); // stats | ventajas
+  const [stats, setStats] = useState(null);
+  const [ventajas, setVentajas] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [nueva, setNueva] = useState({ titulo: "", descripcion: "", codigo: "", tienda: "", caducidad: "", nivelMin: 0 });
+  const [creando, setCreando] = useState(false);
+
+  const apiAdmin = async (body) => {
+    try {
+      const r = await fetch("/api/admin", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, key: adminKey }),
+      });
+      return await r.json();
+    } catch { return { ok: false, error: "Sin conexión" }; }
+  };
+
+  const entrar = async () => {
+    setLoading(true); setError("");
+    const d = await apiAdmin({ accion: "stats" });
+    setLoading(false);
+    if (d.ok) {
+      localStorage.setItem("wt_admin_key", adminKey);
+      setStats(d);
+      setAutenticado(true);
+    } else setError(d.error || "Clave incorrecta");
+  };
+
+  const cargarVentajas = async () => {
+    const d = await apiAdmin({ accion: "listar_ventajas" });
+    if (d.ok) setVentajas(d.ventajas);
+  };
+
+  const crearVentaja = async () => {
+    if (!nueva.titulo.trim()) { setError("El título es obligatorio"); return; }
+    setCreando(true); setError("");
+    const d = await apiAdmin({ accion: "crear_ventaja", ...nueva });
+    setCreando(false);
+    if (d.ok) {
+      setNueva({ titulo: "", descripcion: "", codigo: "", tienda: "", caducidad: "", nivelMin: 0 });
+      cargarVentajas();
+    } else setError(d.error || "Error al crear");
+  };
+
+  const borrarVentaja = async (id) => {
+    if (!window.confirm("¿Eliminar esta ventaja?")) return;
+    await apiAdmin({ accion: "borrar_ventaja", ventajaId: id });
+    cargarVentajas();
+  };
+
+  // ── Login ──
+  if (!autenticado) return (
+    <div style={{ maxWidth: 380, margin: "0 auto", padding: "40px 20px", textAlign: "center" }}>
+      <img src={LOGO} style={{ height: 70, marginBottom: 16 }} />
+      <h1 style={{ fontFamily: F.script, fontSize: 24, fontWeight: 700, color: C.burgundy, margin: "0 0 6px" }}>
+        Panel de Administración
+      </h1>
+      <p style={{ color: C.muted, fontSize: 12, fontFamily: F.serif, fontStyle: "italic", margin: "0 0 24px" }}>
+        Acceso reservado al equipo Winetastic
+      </p>
+      <input type="password" value={adminKey} onChange={e => setAdminKey(e.target.value)}
+        placeholder="Clave de administrador"
+        onKeyDown={e => e.key === "Enter" && entrar()}
+        style={{ ...iBase, textAlign: "center", marginBottom: 12 }} />
+      {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
+      <button onClick={entrar} disabled={loading || !adminKey}
+        style={{ width: "100%", background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+          color: "#FDF7F0", border: "none", borderRadius: 9, padding: "14px",
+          fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700, marginBottom: 12 }}>
+        {loading ? "Verificando..." : "Entrar"}
+      </button>
+      <button onClick={onVolver} style={{ background: "none", color: C.muted,
+        border: `1px solid ${C.border}`, borderRadius: 9, padding: "10px 20px",
+        fontSize: 13, cursor: "pointer", fontFamily: F.serif }}>← Volver</button>
+    </div>
+  );
+
+  // ── Panel ──
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <h1 style={{ fontFamily: F.script, fontSize: 24, fontWeight: 700, color: C.burgundy, margin: 0 }}>
+          ⚙ Panel Winetastic
+        </h1>
+        <button onClick={onVolver} style={{ background: "none", border: `1px solid ${C.border}`,
+          borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12,
+          color: C.muted, fontFamily: F.serif }}>← Salir</button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {[["stats", "📊 Estadísticas"], ["ventajas", "🎁 Ventajas"]].map(([t, l]) => (
+          <button key={t} onClick={() => { setTab(t); if (t === "ventajas" && !ventajas) cargarVentajas(); }}
+            style={{ flex: 1, background: tab === t ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : C.card,
+              color: tab === t ? "#fff" : C.text, border: `1px solid ${tab === t ? C.burgundy : C.border}`,
+              borderRadius: 10, padding: "11px", cursor: "pointer", fontFamily: F.serif, fontSize: 13 }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── STATS ── */}
+      {tab === "stats" && stats && (
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+            {[["Usuarios", stats.totalUsuarios], ["Fichas totales", stats.totalFichas]].map(([l, v]) => (
+              <div key={l} style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})`,
+                borderRadius: 14, padding: "18px", textAlign: "center" }}>
+                <div style={{ color: "#fff", fontFamily: F.script, fontSize: 34, fontWeight: 700 }}>{v}</div>
+                <div style={{ color: C.gold, fontSize: 10, fontFamily: F.serif,
+                  letterSpacing: 2, textTransform: "uppercase" }}>{l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Distribución de niveles */}
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+            padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+              color: C.muted, fontFamily: F.serif, marginBottom: 10 }}>Distribución por nivel</div>
+            {NIVELES.map(n => (
+              <div key={n.nombre} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
+                <span style={{ width: 24, fontSize: 14 }}>{n.icono}</span>
+                <span style={{ flex: 1, fontFamily: F.serif, fontSize: 13, color: C.text }}>{n.nombre}</span>
+                <span style={{ fontFamily: F.script, fontSize: 15, fontWeight: 700, color: C.burgundy }}>
+                  {stats.distribucion[n.nombre] || 0}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Ranking de usuarios */}
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+            padding: "14px 16px", marginBottom: 40 }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+              color: C.muted, fontFamily: F.serif, marginBottom: 10 }}>Usuarios ({stats.usuarios.length})</div>
+            {stats.usuarios.map((u, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0",
+                borderBottom: i < stats.usuarios.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                <span style={{ fontFamily: F.serif, fontSize: 12, color: C.muted, width: 22 }}>{i + 1}.</span>
+                <span style={{ flex: 1, fontFamily: F.serif, fontSize: 13, color: C.text }}>
+                  {u.nombre !== "—" ? u.nombre : u.id}
+                </span>
+                <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>{u.fichas} fichas</span>
+                <span style={{ fontFamily: F.script, fontSize: 13, fontWeight: 700, color: C.burgundy, width: 60, textAlign: "right" }}>
+                  {u.puntos} pts
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── VENTAJAS ── */}
+      {tab === "ventajas" && (
+        <div>
+          {/* Crear nueva */}
+          <div style={{ background: C.card, border: `2px solid ${C.gold}`, borderRadius: 14,
+            padding: "16px 18px", marginBottom: 20 }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+              color: C.goldDark, fontFamily: F.serif, marginBottom: 12 }}>✦ Nueva ventaja / promoción</div>
+            <Field label="Título *">
+              <TInput value={nueva.titulo} onChange={v => setNueva(n => ({ ...n, titulo: v }))}
+                placeholder="Ej: 15% en Vinoteca La Mancha" />
+            </Field>
+            <Field label="Descripción">
+              <TInput value={nueva.descripcion} onChange={v => setNueva(n => ({ ...n, descripcion: v }))}
+                placeholder="Descuento en toda la tienda presentando el código" />
+            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Field label="Código">
+                <TInput value={nueva.codigo} onChange={v => setNueva(n => ({ ...n, codigo: v.toUpperCase() }))}
+                  placeholder="WINE15" />
+              </Field>
+              <Field label="Tienda / Partner">
+                <TInput value={nueva.tienda} onChange={v => setNueva(n => ({ ...n, tienda: v }))}
+                  placeholder="Vinoteca La Mancha" />
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Field label="Caducidad">
+                <TInput value={nueva.caducidad} onChange={v => setNueva(n => ({ ...n, caducidad: v }))}
+                  placeholder="31/08/2026" />
+              </Field>
+              <Field label="Nivel mínimo">
+                <select value={nueva.nivelMin} onChange={e => setNueva(n => ({ ...n, nivelMin: +e.target.value }))}
+                  style={iBase}>
+                  {NIVELES.map((n, i) => <option key={i} value={i}>{n.icono} {n.nombre}{i === 0 ? " (todos)" : "+"}</option>)}
+                </select>
+              </Field>
+            </div>
+            {error && <p style={{ color: "#c0392b", fontFamily: F.serif, fontSize: 13, margin: "4px 0 8px" }}>{error}</p>}
+            <button onClick={crearVentaja} disabled={creando}
+              style={{ width: "100%", background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`,
+                color: C.text, border: "none", borderRadius: 9, padding: "13px",
+                fontSize: 15, cursor: "pointer", fontFamily: F.script, fontWeight: 700 }}>
+              {creando ? "Publicando..." : "🚀 Publicar ventaja"}
+            </button>
+          </div>
+
+          {/* Lista */}
+          <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+            color: C.muted, fontFamily: F.serif, marginBottom: 12 }}>
+            Ventajas activas {ventajas ? `(${ventajas.length})` : ""}
+          </div>
+          {ventajas === null ? (
+            <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, textAlign: "center" }}>Cargando...</p>
+          ) : ventajas.length === 0 ? (
+            <p style={{ color: C.muted, fontFamily: F.serif, fontSize: 13, fontStyle: "italic", textAlign: "center" }}>
+              No hay ventajas publicadas todavía.
+            </p>
+          ) : ventajas.map(v => (
+            <div key={v.id} style={{ background: C.card, border: `1px solid ${C.border}`,
+              borderRadius: 12, padding: "12px 16px", marginBottom: 10,
+              display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: F.script, fontSize: 15, fontWeight: 700, color: C.text }}>{v.titulo}</div>
+                <div style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>
+                  {NIVELES[v.nivelMin || 0].icono} {NIVELES[v.nivelMin || 0].nombre}{(v.nivelMin || 0) > 0 ? "+" : ""}
+                  {v.codigo ? ` · ${v.codigo}` : ""}{v.caducidad ? ` · hasta ${v.caducidad}` : ""}
+                </div>
+              </div>
+              <button onClick={() => borrarVentaja(v.id)}
+                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8,
+                  padding: "6px 10px", cursor: "pointer", color: "#c0392b", fontSize: 12 }}>
+                🗑
+              </button>
+            </div>
+          ))}
+          <div style={{ height: 40 }} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 function WinetasticApp() {
   const [view, setView] = useState("home");
 
@@ -2609,6 +3008,7 @@ function WinetasticApp() {
 
   const [fichas, setFichas] = useState([]);
   const [loadingFichas, setLoadingFichas] = useState(true);
+  const [perfil, setPerfil] = useState(null); // { puntos, nivel }
   const [modoGuiado, setModoGuiado] = useState(null); // null=sin elegir, true=guiado, false=experto
   const [guiaFase, setGuiaFase] = useState(null); // null=mostrando ficha, string=mostrando guía
   const [migrada, setMigrada] = useState(false);
@@ -2635,7 +3035,7 @@ function WinetasticApp() {
           localStorage.removeItem(LS_KEY);
           setMigrada(true);
         }
-        const data = await apiFichas("listar", userId);
+        const data = await apiFichas("listar", userId, { nombre: displayName || "" });
         const cloud = Array.isArray(data?.fichas) ? data.fichas : null;
         if (cloud !== null) {
           setFichas(cloud);
@@ -2647,6 +3047,11 @@ function WinetasticApp() {
       } finally {
         setLoadingFichas(false);
       }
+      // Cargar puntos y nivel
+      try {
+        const p = await apiFichas("perfil", userId);
+        if (p?.ok) setPerfil({ puntos: p.puntos, ...nivelDe(p.puntos) });
+      } catch { /* sin perfil */ }
     };
     cargar();
   }, [userId]);
@@ -2719,6 +3124,11 @@ function WinetasticApp() {
             padding: "12px 20px", position: "sticky", top: 0, zIndex: 100 }}>
             <img src={LOGO} alt="Winetastic" style={{ height: 30 }} />
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button onClick={() => setView("admin")} title="Panel de administración"
+                style={{ background: "none", border: "none", cursor: "pointer",
+                  fontSize: 13, color: C.border, padding: "2px 4px" }}>
+                ⚙
+              </button>
               <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>
                 {displayFull}
               </span>
@@ -2762,6 +3172,18 @@ function WinetasticApp() {
                 <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 13, fontFamily: F.serif }}>
                   {displayName ? `Hola, ${displayName} · ` : ""}{fichas.length} {fichas.length === 1 ? "cata guardada" : "catas guardadas"}
                 </div>
+                {perfil && (
+                  <button onClick={() => setView("ventajas")}
+                    style={{ marginTop: 8, background: "rgba(255,255,255,0.14)",
+                      border: "1px solid rgba(255,255,255,0.3)", borderRadius: 20,
+                      padding: "5px 14px", cursor: "pointer", display: "inline-flex",
+                      alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 13 }}>{perfil.icono}</span>
+                    <span style={{ color: "#fff", fontSize: 12, fontFamily: F.serif, fontWeight: 600 }}>
+                      {perfil.nombre} · {perfil.puntos} pts
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2964,7 +3386,7 @@ function WinetasticApp() {
               borderBottom: "3px solid transparent" }}>
             ←
           </button>
-          {[["nueva", "✏️ Nueva Cata"], ["fichas", "📋 Mis Fichas"], ["recomienda", "🍾 Recomiéndame"], ["eventos", "📅 Eventos"], ["organiza", "🍷 Organiza"]].map(([v, l]) => (
+          {[["nueva", "✏️ Nueva Cata"], ["fichas", "📋 Mis Fichas"], ["recomienda", "🍾 Recomiéndame"], ["eventos", "📅 Eventos"], ["ventajas", "🎁 Ventajas"]].map(([v, l]) => (
             <button key={v} onClick={() => setView(v)}
               style={{ flex: 1, padding: "14px 6px", border: "none", cursor: "pointer",
                 fontFamily: F.serif, fontWeight: 700, fontSize: 12,
@@ -2998,6 +3420,12 @@ function WinetasticApp() {
 
         {/* ── VISTA ORGANIZA ── */}
         {view === "organiza" && <OrganizaView />}
+
+        {/* ── VISTA VENTAJAS ── */}
+        {view === "ventajas" && <VentajasView perfil={perfil} />}
+
+        {/* ── VISTA ADMIN ── */}
+        {view === "admin" && <AdminPanelView onVolver={() => setView("home")} />}
 
         {/* ── VISTA EVENTOS ── */}
         {view === "eventos" && <EventosView />}

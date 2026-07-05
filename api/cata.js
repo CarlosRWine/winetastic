@@ -13,21 +13,13 @@ const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const TTL = 60 * 24 * 60 * 60;
 
 async function redis(...command) {
-  if (!URL || !TOKEN) {
-    throw new Error("Faltan variables de entorno UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN en Vercel.");
-  }
-  let res;
-  try {
-    res = await fetch(URL.trim(), {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN.trim()}`, "Content-Type": "application/json" },
-      body: JSON.stringify(command),
-    });
-  } catch (e) {
-    throw new Error(`No se pudo conectar con Upstash (${command[0]}): ${e.message}`);
-  }
+  const res = await fetch(URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify(command),
+  });
   const data = await res.json();
-  if (data.error) throw new Error(`Redis (${command[0]}): ${data.error}`);
+  if (data.error) throw new Error(`Redis: ${data.error}`);
   return data.result;
 }
 
@@ -126,6 +118,9 @@ export default async function handler(req, res) {
       const cata = { codigo: cod, vinos, estado: "abierta", creadaEn: Date.now() };
       await setCata(cod, cata);
 
+      // Puntos por organizar una cata (+40)
+      if (req.body.userId) await redis("INCRBY", `puntos_extra:${req.body.userId}`, 40);
+
       // Registrar al admin como participante (puede catar también)
       const pid = genPid();
       const adminNombre = (req.body.adminNombre || "Anfitrión").trim() || "Anfitrión";
@@ -165,6 +160,10 @@ export default async function handler(req, res) {
       };
       await redis("RPUSH", `cata:${codigo}:fichas`, j(registro));
       await redis("EXPIRE", `cata:${codigo}:fichas`, TTL);
+
+      // Puntos por participar en cata grupal (+25 por ficha)
+      if (req.body.userId) await redis("INCRBY", `puntos_extra:${req.body.userId}`, 25);
+
       return res.json({ ok: true });
     }
 

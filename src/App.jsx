@@ -3126,7 +3126,7 @@ function WinetasticApp() {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setView("admin")} title="Panel de administración"
                 style={{ background: "none", border: "none", cursor: "pointer",
-                  fontSize: 13, color: C.border, padding: "2px 4px" }}>
+                  fontSize: 16, color: C.muted, padding: "2px 4px" }}>
                 ⚙
               </button>
               <span style={{ fontSize: 11, color: C.muted, fontFamily: F.serif }}>

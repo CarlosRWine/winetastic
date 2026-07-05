@@ -174,6 +174,8 @@ const newForm = () => ({
   arp: [{ text: "", int: 0 }], ara: [{ text: "", int: 0 }], punt_olf: 0,
   sab: [{ text: "", int: 0 }],
   seco_dulce: 0, astringencia: 0, retro_p: 0, retro_t: "", punt_gus: 0,
+  acidez: 0, alcohol_i: 0, textura: "", graduacion: "",
+  com_vis: "", com_olf: "", com_gus: "",
   puntuacion: "", notas: ""
 });
 
@@ -853,6 +855,9 @@ const FichaGrupalForm = ({ vino, onEnviar, onCancelar, loading }) => {
             <Field key={k} label={l}><ScalePicker value={form[k]} onChange={v => setF(k, v)} /></Field>
           ))}
         </div>
+        <Field label="Comentario (opcional)">
+          <TInput value={form.com_vis} onChange={v => setF("com_vis", v)} placeholder="Notas libres..." />
+        </Field>
       </Section>
 
       <Section title="Análisis Olfativo" icon="👃">
@@ -865,12 +870,38 @@ const FichaGrupalForm = ({ vino, onEnviar, onCancelar, loading }) => {
         {form.ara.length < 5 && <AddBtn onClick={() => addRow("ara")} label="Añadir aroma" />}
         <div style={{ height: 1, background: C.border, margin: "14px 0" }} />
         <Field label="Punt. Olfativa"><ScalePicker value={form.punt_olf} onChange={v => setF("punt_olf", v)} /></Field>
+        <Field label="Comentario (opcional)">
+          <TInput value={form.com_olf} onChange={v => setF("com_olf", v)} placeholder="Notas libres..." />
+        </Field>
       </Section>
 
       <Section title="Análisis Gustativo" icon="👅">
         {form.sab.map((s, i) => <AromaRow key={i} item={s} onChange={v => updRow("sab", i, v)} label={`Sabor ${i + 1}`} />)}
         {form.sab.length < 5 && <AddBtn onClick={() => addRow("sab")} label="Añadir sabor" />}
         <div style={{ height: 1, background: C.border, margin: "14px 0" }} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Persistencia"><ScalePicker value={form.retro_p} onChange={v => setF("retro_p", v)} /></Field>
+          <Field label="Acidez"><ScalePicker value={form.acidez} onChange={v => setF("acidez", v)} /></Field>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Dulzor"><ScalePicker value={form.seco_dulce} onChange={v => setF("seco_dulce", v)} /></Field>
+          <Field label="Alcohol (calidez)"><ScalePicker value={form.alcohol_i} onChange={v => setF("alcohol_i", v)} /></Field>
+        </div>
+        <Field label="Textura">
+          <div style={{ display: "flex", gap: 8 }}>
+            {["Ligera", "Media", "Densa"].map(t => (
+              <button key={t} onClick={() => setF("textura", form.textura === t ? "" : t)}
+                style={{ flex: 1, background: form.textura === t ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : C.card,
+                  color: form.textura === t ? "#fff" : C.text,
+                  border: `1px solid ${form.textura === t ? C.burgundy : C.border}`,
+                  borderRadius: 9, padding: "9px", cursor: "pointer",
+                  fontFamily: F.serif, fontSize: 13 }}>{t}</button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Comentario (opcional)">
+          <TInput value={form.com_gus} onChange={v => setF("com_gus", v)} placeholder="Notas libres..." />
+        </Field>
         <Field label="Punt. Gustativa"><ScalePicker value={form.punt_gus} onChange={v => setF("punt_gus", v)} /></Field>
       </Section>
 
@@ -1287,6 +1318,11 @@ const ResultadosMultiView = ({ codigo, onVolver, esAdmin, miNombre }) => {
       else setError(d.error || "Error al cargar resultados.");
     })();
   }, [codigo]);
+
+  // Generación automática de la nota IA (solo admin, solo si no existe)
+  useEffect(() => {
+    if (esAdmin && data && !resumenIA && !genIA) generarIA();
+  }, [data]);
 
   const generarIA = async () => {
     setGenIA(true);
@@ -3421,7 +3457,7 @@ function WinetasticApp() {
           {/* ── TOP NAV — solo logo en home ── */}
           <div style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 20px", position: "sticky", top: 0, zIndex: 100 }}>
+            padding: "calc(12px + env(safe-area-inset-top)) 20px 14px", position: "sticky", top: 0, zIndex: 100 }}>
             <img src={LOGO} alt="Winetastic" style={{ height: 30 }} />
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setView("admin")} title="Panel de administración"
@@ -3846,6 +3882,9 @@ function WinetasticApp() {
                   <TInput value={form.precio} onChange={v => set("precio", v)} placeholder="Ej: 25" type="number" />
                 </Field>
               </div>
+              <Field label="Graduación (% vol., opcional)">
+                <TInput value={form.graduacion} onChange={v => set("graduacion", v)} placeholder="Ej: 13.5" type="number" />
+              </Field>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <Field label="Zona Geográfica">
                   <TInput value={form.zona} onChange={v => set("zona", v)} placeholder="Ej: Ribera del Duero" />
@@ -3917,6 +3956,9 @@ function WinetasticApp() {
                   <Field key={k} label={l}><ScalePicker value={form[k]} onChange={v => set(k, v)} /></Field>
                 ))}
               </div>
+              <Field label="Comentario de esta fase (opcional)">
+                <TInput value={form.com_vis} onChange={v => set("com_vis", v)} placeholder="Notas libres de la vista..." />
+              </Field>
             </Section>
 
             {/* OLFATIVA */}
@@ -3942,6 +3984,9 @@ function WinetasticApp() {
               {form.ara.length < 5 && <AddBtn onClick={() => addRow("ara")} label="Añadir aroma" />}
               <div style={{ height: 1, background: C.border, margin: "16px 0" }} />
               <Field label="Puntuación General Olfativa"><ScalePicker value={form.punt_olf} onChange={v => set("punt_olf", v)} /></Field>
+              <Field label="Comentario de esta fase (opcional)">
+                <TInput value={form.com_olf} onChange={v => set("com_olf", v)} placeholder="Notas libres del olfato..." />
+              </Field>
             </Section>
 
             {/* GUSTATIVA */}
@@ -3973,6 +4018,25 @@ function WinetasticApp() {
                 <Field label="Astringencia"><ScalePicker value={form.astringencia} onChange={v => set("astringencia", v)} /></Field>
                 <Field label="Retrogusto (intensidad)"><ScalePicker value={form.retro_p} onChange={v => set("retro_p", v)} /></Field>
               </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Field label="Acidez"><ScalePicker value={form.acidez} onChange={v => set("acidez", v)} /></Field>
+                <Field label="Alcohol (calidez)"><ScalePicker value={form.alcohol_i} onChange={v => set("alcohol_i", v)} /></Field>
+              </div>
+              <Field label="Textura">
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["Ligera", "Media", "Densa"].map(t => (
+                    <button key={t} onClick={() => set("textura", form.textura === t ? "" : t)}
+                      style={{ flex: 1, background: form.textura === t ? `linear-gradient(135deg, ${C.burgundy}, ${C.burDark})` : C.card,
+                        color: form.textura === t ? "#fff" : C.text,
+                        border: `1px solid ${form.textura === t ? C.burgundy : C.border}`,
+                        borderRadius: 9, padding: "9px", cursor: "pointer",
+                        fontFamily: F.serif, fontSize: 13 }}>{t}</button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Comentario de esta fase (opcional)">
+                <TInput value={form.com_gus} onChange={v => set("com_gus", v)} placeholder="Notas libres del gusto..." />
+              </Field>
               <Field label="Retrogusto (descripción)">
                 <TInput value={form.retro_t} onChange={v => set("retro_t", v)} placeholder="Describe el retrogusto..." />
               </Field>

@@ -84,9 +84,17 @@ function agregarFichas(fichas) {
     if (c) coloresMapa[c] = (coloresMapa[c] || 0) + 1;
   });
 
+  // Comentarios libres de los catadores (ingrediente para la nota IA)
+  const comentarios = fichas
+    .map(f => [f.ficha?.com_vis, f.ficha?.com_olf, f.ficha?.com_gus, f.ficha?.notas]
+      .filter(Boolean).join(" · "))
+    .filter(Boolean)
+    .slice(0, 8);
+
   return {
     total: fichas.length,
     punt_media,
+    comentarios,
     colores: Object.entries(coloresMapa).sort((a, b) => b[1] - a[1]).slice(0, 4)
       .map(([texto, count]) => ({ texto, count })),
     aromas: contar("arp"),
@@ -163,6 +171,28 @@ export default async function handler(req, res) {
 
       // Puntos por participar en cata grupal (+25 por ficha)
       if (req.body.userId) await redis("INCRBY", `puntos_extra:${req.body.userId}`, 25);
+
+      // Guardar también en Mis Fichas del usuario (con datos del vino de la cata)
+      if (req.body.userId) {
+        try {
+          const vino = cata.vinos?.[registro.vinoIdx] || {};
+          const KEY_F = `fichas:${req.body.userId}`;
+          const rawF = await redis("GET", KEY_F);
+          let fichas = [];
+          try { fichas = JSON.parse(rawF) || []; } catch { fichas = []; }
+          fichas.push({
+            ...req.body.ficha,
+            nombre: vino.nombre || "Vino de cata grupal",
+            bodega: vino.bodega || "",
+            anada: vino.anada || "",
+            id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            fecha: new Date().toLocaleDateString("es-ES"),
+            grupal: true,
+            codigoCata: codigo,
+          });
+          await redis("SET", KEY_F, JSON.stringify(fichas));
+        } catch (e) { console.error("No se pudo copiar a Mis Fichas:", e); }
+      }
 
       return res.json({ ok: true });
     }

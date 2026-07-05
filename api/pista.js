@@ -32,7 +32,10 @@ export default async function handler(req, res) {
           .map(a => `${a.texto} (${a.count})`).join(", ");
         const sabores = (resumen.sabores || []).map(s => `${s.texto} (${s.count})`).join(", ");
         const colores = (resumen.colores || []).map(c => `${c.texto} (${c.count})`).join(", ");
-        return `"${vino.nombre}"${vino.bodega ? ` de ${vino.bodega}` : ""}${vino.anada ? `, añada ${vino.anada}` : ""} — ${resumen.total} fichas, media ${resumen.punt_media}/100. Colores: ${colores || "—"}. Aromas: ${aromas || "—"}. Sabores: ${sabores || "—"}.`;
+        const coms = (resumen.comentarios || []).length
+          ? ` Comentarios de los catadores: "${resumen.comentarios.join('" / "')}".`
+          : "";
+        return `"${vino.nombre}"${vino.bodega ? ` de ${vino.bodega}` : ""}${vino.anada ? `, añada ${vino.anada}` : ""} — ${resumen.total} fichas, media ${resumen.punt_media}/100. Colores: ${colores || "—"}. Aromas: ${aromas || "—"}. Sabores: ${sabores || "—"}.${coms}`;
       };
 
       const cuerpo = bloques.map(describir).join("\n");
